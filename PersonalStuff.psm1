@@ -1138,7 +1138,7 @@ function Get-ExtendedFileProperties {
                     Add-Member -InputObject $RawFileProperties -MemberType NoteProperty -Name $name.replace(" ", "") -value "$value"
                     write-debug "Adding Member -Name $name -value $value"
     
-                    # todo: Check for unknown attributes (wull also check for atypical mp3 attributes). Logging both to some sort of error log
+                    # todo: Check for unknown attributes (will also check for a typical mp3 attributes). Logging both to some sort of error log
                     #
                     # if not in array
                     # then
