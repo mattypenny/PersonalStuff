@@ -27,33 +27,31 @@ function prompt {
     
     
     #>
-      [CmdletBinding()]
-        Param( [String] $Folder)
+    [CmdletBinding()]
+    Param( [String] $Folder)
     
-      $realLASTEXITCODE = $LASTEXITCODE
+    $realLASTEXITCODE = $LASTEXITCODE
     
-      # Reset color, which can be messed up by Enable-GitColors
-      $Host.UI.RawUI.ForegroundColor = $GitPromptSettings.DefaultForegroundColor
+    # Reset color, which can be messed up by Enable-GitColors
+    $Host.UI.RawUI.ForegroundColor = $GitPromptSettings.DefaultForegroundColor
     
-      $FolderName = [System.IO.Path]::GetFileName($pwd.ProviderPath)
+    $FolderName = [System.IO.Path]::GetFileName($pwd.ProviderPath)
     
-      Write-Host($FolderName) -nonewline
+    Write-Host($FolderName) -nonewline
     
-      try
-      {
+    try {
         Write-VcsStatus
-      }
-      catch
-      {
-        $PromptDate=get-date
-        write-host " $PromptDate" -nonewline
-      }
-      $global:LASTEXITCODE = $realLASTEXITCODE
-      return " $ "
-    
     }
+    catch {
+        $PromptDate = get-date
+        write-host " $PromptDate" -nonewline
+    }
+    $global:LASTEXITCODE = $realLASTEXITCODE
+    return " $ "
     
-    <#
+}
+    
+<#
     vim: tabstop=2 softtabstop=2 shiftwidth=2 expandtab
     #>
     
@@ -61,7 +59,7 @@ function prompt {
     
     
     
-    <#
+<#
     .Synopsis
     Get files modified between specified dates [sh]
     .DESCRIPTION
@@ -72,41 +70,40 @@ function prompt {
     .EXAMPLE
     get-childitembydate "*txt" 20 0
     #>
-    function get-childitembydate
-    {
-        [CmdletBinding()]
+function get-childitembydate {
+    [CmdletBinding()]
     
-        Param
-        (
-            # Param1 help description
-            $Filespec,
+    Param
+    (
+        # Param1 help description
+        $Filespec,
     
-            # Param2 help description
-            [int]
-            $newer = 1000000,
-    
-    
-            # Param2 help description
-            [int]
-            $older = 0
-        )
+        # Param2 help description
+        [int]
+        $newer = 1000000,
     
     
-        gci -recurse $Filespec | select lastwritetime, length, fullname |
-            where-object {
-                            $_.Lastwritetime -ge (Get-Date).AddDays($newer * -1) -and
-                            $_.Lastwritetime -le (Get-Date).AddDays($older * -1)
-                         }
+        # Param2 help description
+        [int]
+        $older = 0
+    )
     
+    
+    gci -recurse $Filespec | select lastwritetime, length, fullname |
+        where-object {
+        $_.Lastwritetime -ge (Get-Date).AddDays($newer * -1) -and
+        $_.Lastwritetime -le (Get-Date).AddDays($older * -1)
     }
     
+}
     
     
     
-    <#
+    
+<#
     vim: tabstop=4 softtabstop=4 shiftwidth=4 expandtab
     #>
-    <#
+<#
     .Synopsis
        Generates a 'git add' command for everything that has been changed but not added
     .DESCRIPTION
@@ -123,134 +120,125 @@ function prompt {
     .EXAMPLE
        Another example of how to use this cmdlet
     #>
-    function Get-MTPGitAddCommand
-    {
-        [CmdletBinding()]
-        [Alias()]
-        [OutputType([int])]
-        Param
-        (
-            [Parameter(Position=0)]
-            $FolderName = ".",
+function Get-MTPGitAddCommand {
+    [CmdletBinding()]
+    [Alias()]
+    [OutputType([int])]
+    Param
+    (
+        [Parameter(Position = 0)]
+        $FolderName = ".",
     
-            [string]$Option = "All"
-        )
+        [string]$Option = "All"
+    )
     
-       $GitStatusOutput = get-MTPGitStatus
+    $GitStatusOutput = get-MTPGitStatus
     
-       get-MTPGitUntrackedFilesCommands -GitStatusOutput $GitStatusOutput
-       get-MTPGitModifiedFilesCommands -GitStatusOutput $GitStatusOutput
+    get-MTPGitUntrackedFilesCommands -GitStatusOutput $GitStatusOutput
+    get-MTPGitModifiedFilesCommands -GitStatusOutput $GitStatusOutput
     
-    }
-    function get-MTPGitModifiedFilesCommands
-    {
-        [CmdletBinding()]
-        Param
-        (
-            [Parameter(Position=0)]
-            $GitStatusOutput
-        )
-    
-        $ModifiedFiles = get-MTPGitModifiedFiles -GitStatusOutput $GitStatusOutput
-        foreach ($F in $ModifiedFiles)
-        {
-            [string]$File = $F.Line
-            $File = $File.trim()
-            write-output "git add `"$File`""
-        }
-    
-    }
-
-    function get-MTPGitUntrackedFilesCommands
-    {
-        [CmdletBinding()]
-        Param
-        (
-            [Parameter(Position=0)]
-            $GitStatusOutput
-        )
-    
-        $UntrackedFiles = get-MTPGitUntrackedFiles -GitStatusOutput $GitStatusOutput
-        foreach ($F in $UntrackedFiles)
-        {
-            [string]$File = $F.Line
-            $File = $File.trim()
-            write-output "git add `"$File`""
-        }
-    
-    }
-    
-    function get-MTPGitStatus
-    {
-        [CmdletBinding()]
-    
-        $GitStatusOutput = git status | select-string '^'
-    
-        $GitStatusOutput = $GitStatusOutput |
-                                where-object Line -notlike "*~" |
-                                where-object Line -notlike "*swp*" |
-                                where-object Line -notlike "*swo" |
-                                where-object Line -notlike '(use "git add <file>..." to include in what will be committed)*'
-    
+}
+function get-MTPGitModifiedFilesCommands {
+    [CmdletBinding()]
+    Param
+    (
+        [Parameter(Position = 0)]
         $GitStatusOutput
+    )
+    
+    $ModifiedFiles = get-MTPGitModifiedFiles -GitStatusOutput $GitStatusOutput
+    foreach ($F in $ModifiedFiles) {
+        [string]$File = $F.Line
+        $File = $File.trim()
+        write-output "git add `"$File`""
     }
     
-    function get-MTPGitUntrackedFiles
-    {
-        [CmdletBinding()]
-        Param
-        (
-            [Parameter(Position=0)]
-            $GitStatusOutput,
+}
+
+function get-MTPGitUntrackedFilesCommands {
+    [CmdletBinding()]
+    Param
+    (
+        [Parameter(Position = 0)]
+        $GitStatusOutput
+    )
     
-            [string]$UntrackedFilesString = "Untracked files:"
-        )
-        $UntrackedFilesLine = $GitStatusOutput | ? line -Like "$UntrackedFilesString*"
-    
-        [int]$UntrackedFilesLineNumber = $UntrackedFilesLine.LineNumber
-    
-        $Untracked = $GitStatusOutput | ? linenumber -gt $UntrackedFilesLineNumber
-    
-        $Untracked
+    $UntrackedFiles = get-MTPGitUntrackedFiles -GitStatusOutput $GitStatusOutput
+    foreach ($F in $UntrackedFiles) {
+        [string]$File = $F.Line
+        $File = $File.trim()
+        write-output "git add `"$File`""
     }
     
-    function get-MTPGitModifiedFiles
-    {
-        [CmdletBinding()]
-        Param
-        (
-            [Parameter(Position=0)]
-            $GitStatusOutput,
+}
     
-            [string]$UntrackedFilesString = "Untracked files:"
-        )
-        $UntrackedFilesLine = $GitStatusOutput | ? line -Like "$UntrackedFilesString*"
+function get-MTPGitStatus {
+    [CmdletBinding()]
     
-        [int]$UntrackedFilesLineNumber = $UntrackedFilesLine.LineNumber
+    $GitStatusOutput = git status | select-string '^'
     
-        $Modified = $GitStatusOutput |
-                        ? linenumber -lt $UntrackedFilesLineNumber |
-                        ? line -like "*modified:*"
+    $GitStatusOutput = $GitStatusOutput |
+        where-object Line -notlike "*~" |
+        where-object Line -notlike "*swp*" |
+        where-object Line -notlike "*swo" |
+        where-object Line -notlike '(use "git add <file>..." to include in what will be committed)*'
+    
+    $GitStatusOutput
+}
+    
+function get-MTPGitUntrackedFiles {
+    [CmdletBinding()]
+    Param
+    (
+        [Parameter(Position = 0)]
+        $GitStatusOutput,
+    
+        [string]$UntrackedFilesString = "Untracked files:"
+    )
+    $UntrackedFilesLine = $GitStatusOutput | ? line -Like "$UntrackedFilesString*"
+    
+    [int]$UntrackedFilesLineNumber = $UntrackedFilesLine.LineNumber
+    
+    $Untracked = $GitStatusOutput | ? linenumber -gt $UntrackedFilesLineNumber
+    
+    $Untracked
+}
+    
+function get-MTPGitModifiedFiles {
+    [CmdletBinding()]
+    Param
+    (
+        [Parameter(Position = 0)]
+        $GitStatusOutput,
+    
+        [string]$UntrackedFilesString = "Untracked files:"
+    )
+    $UntrackedFilesLine = $GitStatusOutput | ? line -Like "$UntrackedFilesString*"
+    
+    [int]$UntrackedFilesLineNumber = $UntrackedFilesLine.LineNumber
+    
+    $Modified = $GitStatusOutput |
+        ? linenumber -lt $UntrackedFilesLineNumber |
+        ? line -like "*modified:*"
     
     
     
-        $ModifiedFiles = @()
+    $ModifiedFiles = @()
     
-        foreach ($F in $Modified)
-        {
-            [string]$Line = $F.Line
-            write-host "$Line"
+    foreach ($F in $Modified) {
+        [string]$Line = $F.Line
+        write-host "$Line"
     
-            $ModifiedFiles += [PSCustomObject]@{Line = $Line.split(':')[1] }
-        }
-    
-        $ModifiedFiles
+        $ModifiedFiles += [PSCustomObject]@{Line = $Line.split(':')[1] }
     }
     
-    set-alias ggac get-MTPgitaddcommand
+    $ModifiedFiles
+}
+    
+set-alias ggac get-MTPgitaddcommand
     
     
-    function get-toplevelfolders {
+function get-toplevelfolders {
     <#
     .SYNOPSIS
       Get servers top level folders
@@ -267,31 +255,30 @@ function prompt {
     .EXAMPLE
       gtlf server1 | select fullname
     #>
-      [CmdletBinding()]
-      Param( [string][Alias ("c")]$computername = "."  )
+    [CmdletBinding()]
+    Param( [string][Alias ("c")]$computername = "."  )
     
-      write-debug "$(get-date -format 'hh:mm:ss.ffff') Function beg: $([string]$MyInvocation.Line) "
+    write-debug "$(get-date -format 'hh:mm:ss.ffff') Function beg: $([string]$MyInvocation.Line) "
     
-      $Drives = Get-WMIObject Win32_LogicalDisk -filter "DriveType=3" -computer $ComputerName
+    $Drives = Get-WMIObject Win32_LogicalDisk -filter "DriveType=3" -computer $ComputerName
     
-      foreach ($D in $Drives)
-      {
+    foreach ($D in $Drives) {
         [string]$Drive = $D.DeviceID
         $Drive = $Drive.replace(":", "$")
         dir \\$ComputerName\$Drive
-      }
-    
-      write-debug "$(get-date -format 'hh:mm:ss.ffff') Function end: $([string]$MyInvocation.Line) "
-    
     }
     
-    set-alias gtlf get-toplevelfolders
+    write-debug "$(get-date -format 'hh:mm:ss.ffff') Function end: $([string]$MyInvocation.Line) "
     
-    <#
+}
+    
+set-alias gtlf get-toplevelfolders
+    
+<#
     vim: tabstop=2 softtabstop=2 shiftwidth=2 expandtab
     #>
     
-    function import-mtpModule {
+function import-mtpModule {
     <#
     .SYNOPSIS
         Shows module last update time, removes it if its already loaded then imports it
@@ -303,52 +290,52 @@ function prompt {
     .EXAMPLE
         Example of how to use this cmdlet
     #>
-        [CmdletBinding()]
-        Param( [string][Alias ("module")]$ListOfModules = "Bounce-PCs"  )
+    [CmdletBinding()]
+    Param( [string][Alias ("module")]$ListOfModules = "Bounce-PCs"  )
     
-        Import-Module Logging
-        Import-Module MtpLogging
+    Import-Module Logging
+    Import-Module MtpLogging
     
-        write-startfunction
+    write-startfunction
     
-        foreach ($ModuleString in $ListOfModules) {
+    foreach ($ModuleString in $ListOfModules) {
     
-            Write-Debug "`$moduleString: $ModuleString"
+        Write-Debug "`$moduleString: $ModuleString"
     
-            foreach ($ModuleObject in $(get-module -ListAvailable $ModuleString)) {
+        foreach ($ModuleObject in $(get-module -ListAvailable $ModuleString)) {
     
-                Write-Debug "`$moduleObject: $ModuleObject"
+            Write-Debug "`$moduleObject: $ModuleObject"
     
-                [string]$Path = $ModuleObject.path
-                $FileDetails = dir $Path | select Lastwritetime, fullName
+            [string]$Path = $ModuleObject.path
+            $FileDetails = dir $Path | select Lastwritetime, fullName
     
-                [string]$LastWriteTime = $FileDetails.LastWriteTime
-                [string]$Fullname = $FileDetails.Fullname
+            [string]$LastWriteTime = $FileDetails.LastWriteTime
+            [string]$Fullname = $FileDetails.Fullname
     
-                write-hostlog "Loading $ModuleObject $LastWriteTime  $Fullname"
+            write-hostlog "Loading $ModuleObject $LastWriteTime  $Fullname"
     
-                remove-module $ModuleObject
+            remove-module $ModuleObject
     
-                import-module $ModuleObject
-    
-            }
+            import-module $ModuleObject
     
         }
     
-        write-endfunction
-    
     }
     
-    set-alias temp get-template
+    write-endfunction
     
-    <#
+}
+    
+set-alias temp get-template
+    
+<#
     vim: tabstop=4 softtabstop=4 shiftwidth=4 expandtab
     #>
     
-    # $QuickReferenceFolder = "c:\users\$($($Env:Username).trimend('2'))\Documents\QuickReference\"
-    $QuickReferenceFolder = "c:\matt\QuickReference\"
+# $QuickReferenceFolder = "c:\users\$($($Env:Username).trimend('2'))\Documents\QuickReference\"
+$QuickReferenceFolder = "c:\matt\QuickReference\"
     
-    function get-LineFromQuickReferenceFiles {
+function get-LineFromQuickReferenceFiles {
     <#
     .SYNOPSIS
     Does a grep on quickref files
@@ -368,22 +355,20 @@ function prompt {
     dir Sqlserver:\sql\$Computername\default\Jobserver\Jobs | ft @{Label ="Jobbie" ; Expression={$_.name} ; Width = 42 }, @{Label="Last run" ;
     
     #>
-      [CmdletBinding()]
-        Param( [String] $Pattern,
-             [String] $FilePattern)
+    [CmdletBinding()]
+    Param( [String] $Pattern,
+        [String] $FilePattern)
     
-      if ($Pattern -ne $null)
-      {
+    if ($Pattern -ne $null) {
         select-string -Pattern $Pattern -path $QuickReferenceFolder\*$FilePattern*.md
-      }
-     else
-      {
+    }
+    else {
         gc $QuickReferenceFolder\*.md
-      }
-    
     }
     
-    function show-quickref {
+}
+    
+function show-quickref {
     <#
     .SYNOPSIS
     Does a grep on quickref files
@@ -403,79 +388,75 @@ function prompt {
     dir Sqlserver:\sql\$Computername\default\Jobserver\Jobs | ft @{Label ="Jobbie" ; Expression={$_.name} ; Width = 42 }, @{Label="Last run" ;
     
     #>
-      [CmdletBinding()]
+    [CmdletBinding()]
     
-        Param([Parameter(Mandatory=$False,Position=1)] [String] $Pattern,
-            [Parameter(Mandatory=$False,Position=2)][Alias ("f","file")] [String] $FilePattern)
+    Param([Parameter(Mandatory = $False, Position = 1)] [String] $Pattern,
+        [Parameter(Mandatory = $False, Position = 2)][Alias ("f", "file")] [String] $FilePattern)
     
     get-LineFromQuickReferenceFiles -pattern $Pattern -filepattern $FilePattern | select line | ft -wrap
     
-    }
-    set-alias qr show-quickref
+}
+set-alias qr show-quickref
     
     
     
-    function set-LocationToQuickReference {
-      cd $QuickReferenceFolder
-    }
-    set-alias cdqr set-LocationToQuickReference
+function set-LocationToQuickReference {
+    cd $QuickReferenceFolder
+}
+set-alias cdqr set-LocationToQuickReference
     
-    function edit-quickref
-    <#
+function edit-quickref
+<#
     Edit the quick reference document
-    #>
-    {
-      [CmdletBinding()]
+    #> {
+    [CmdletBinding()]
     
-        Param( [Parameter(Mandatory=$False,Position=2)][Alias ("f","file")] [String] $FilePattern)
+    Param( [Parameter(Mandatory = $False, Position = 2)][Alias ("f", "file")] [String] $FilePattern)
     
-      if ($FilePattern)
-      {
+    if ($FilePattern) {
         gvim "$QuickReferenceFolder\\*$FilePattern*.md"
-      }
-      else
-      {
-        gvim "$QuickReferenceFolder\\unsorted.md"
-      }
     }
-    set-alias gqr edit-quickref
-    set-alias eqr edit-quickref
-    set-alias qrg edit-quickref
+    else {
+        gvim "$QuickReferenceFolder\\unsorted.md"
+    }
+}
+set-alias gqr edit-quickref
+set-alias eqr edit-quickref
+set-alias qrg edit-quickref
     
-    <#
+<#
     vim: tabstop=2 softtabstop=2 shiftwidth=2 expandtab
     #>
     
     
     
     
-    # ------------------------------
-    # save-history
-    # ------------------------------
-    function save-history {
+# ------------------------------
+# save-history
+# ------------------------------
+function save-history {
     <#
     .Synopsis
     
     
     #>
     
-      $folder = "c:\powershell\history\"
-      foreach ($H in $(get-history -count 10000))
-      {
-         [datetime]$StartExecutionTime = $H.StartExecutionTime;
+    $folder = "c:\powershell\history\"
+    foreach ($H in $(get-history -count 10000)) {
+        [datetime]$StartExecutionTime = $H.StartExecutionTime;
     
-         $FileName = $StartExecutionTime.ToString("yyyyMMdd")
+        $FileName = $StartExecutionTime.ToString("yyyyMMdd")
     
-         $FileName = "$FileName.txt"
+        $FileName = "$FileName.txt"
     
-         $H | select EndExecutionTime, ExecutionStatus, CommandLine | fl  >> $folder\$Filename
-    
-      }
+        $H | select EndExecutionTime, ExecutionStatus, CommandLine | fl  >> $folder\$Filename
     
     }
-    set-alias shh save-history
     
-    <#
+}
+set-alias shh save-history
+    
+<#
     function get-historymatchingstringfromsavefiles
     {
         [CmdletBinding()]
@@ -510,36 +491,33 @@ function prompt {
     }
     #>
     
-    function get-MTPHistory
-    {
+function get-MTPHistory {
     <#
     .SYNOPSIS
       Search through history
     #>
-        [CmdletBinding()]
-        Param ($Pattern = "*",
-               $Tail = 50)
+    [CmdletBinding()]
+    Param ($Pattern = "*",
+        $Tail = 50)
     
-        if ($Pattern -eq "*")
-        {
-            Get-History -count $Tail |  select Commandline
-        }
-        else
-        {
-            Get-History | Where-Object CommandLine -like "*$Pattern*" | select Commandline
-        }
-    
+    if ($Pattern -eq "*") {
+        Get-History -count $Tail |  select Commandline
     }
-    Set-Alias -Name hh -Value get-MTPHistory
+    else {
+        Get-History | Where-Object CommandLine -like "*$Pattern*" | select Commandline
+    }
+    
+}
+Set-Alias -Name hh -Value get-MTPHistory
     
     
     
-    # ----------------------------------------------------------------------
-    # Function: aliasname - dbgon/off
-    #
-    #           This function just sets debug off (default) or on
-    # ----------------------------------------------------------------------
-    function set-debug {
+# ----------------------------------------------------------------------
+# Function: aliasname - dbgon/off
+#
+#           This function just sets debug off (default) or on
+# ----------------------------------------------------------------------
+function set-debug {
     <#
     .SYNOPSIS
     Sets de bugger on or off
@@ -569,58 +547,58 @@ function prompt {
     
     #>
     
-      [CmdletBinding()]
-        Param( [String] $P_DEBUG_MODE = "OFF")
+    [CmdletBinding()]
+    Param( [String] $P_DEBUG_MODE = "OFF")
     
-      set-alias dbg write-debug
+    set-alias dbg write-debug
     
-      dbg "P_DEBUG_MODE $P_DEBUG_MODE"
+    dbg "P_DEBUG_MODE $P_DEBUG_MODE"
     
-      dbg " DEBUGPREFENCE is $DEBUGPREFERENCE"
-      if ($P_DEBUG_MODE -eq "ON")
-      {
+    dbg " DEBUGPREFENCE is $DEBUGPREFERENCE"
+    if ($P_DEBUG_MODE -eq "ON") {
         dbg "On DEBUGPREFENCE is $DEBUGPREFERENCE"
         $DEBUGPREFERENCE = "Continue"
         dbg "On DEBUGPREFENCE is $DEBUGPREFERENCE"
-      }
-      else
-      {
-        dbg "Off DEBUGPREFENCE is $DEBUGPREFERENCE"
-        $DEBUGPREFERENCE = "SilentlyContinue"
-        dbg "Off DEBUGPREFENCE is $DEBUGPREFERENCE"
-      }
-        $DEBUGPREFERENCE = "SilentlyContinue"
-        dbg "DEBUGPREFENCE is $DEBUGPREFERENCE"
-    
     }
-    set-alias db set-debug
-    function dbon {
+    else {
+        dbg "Off DEBUGPREFENCE is $DEBUGPREFERENCE"
+        $DEBUGPREFERENCE = "SilentlyContinue"
+        dbg "Off DEBUGPREFENCE is $DEBUGPREFERENCE"
+    }
+    $DEBUGPREFERENCE = "SilentlyContinue"
+    dbg "DEBUGPREFENCE is $DEBUGPREFERENCE"
+    
+}
+set-alias db set-debug
+function dbon {
     <#
     .SYNOPSIS
         Sets debug on
     #>
-    . set-debug on}
-    function dboff {
+    . set-debug on
+}
+function dboff {
     <#
     .SYNOPSIS
         Sets debug off
     #>
-    . set-debug off}
-    # Not setting an alias here for 'dbg' because I'm intending to use that
-    # in the code
+    . set-debug off
+}
+# Not setting an alias here for 'dbg' because I'm intending to use that
+# in the code
     
-    <#
+<#
     vim: tabstop=2 softtabstop=2 shiftwidth=2 expandtab
     #>
     
     
-    # ----------------------------------------------------------------------
-    # Function: vidate - edit-filewithbackup
-    #
-    #           This function copies the existing file to old\<filename>_<date>
-    #           This function is autoloaded
-    # ----------------------------------------------------------------------
-    function edit-filewithbackup {
+# ----------------------------------------------------------------------
+# Function: vidate - edit-filewithbackup
+#
+#           This function copies the existing file to old\<filename>_<date>
+#           This function is autoloaded
+# ----------------------------------------------------------------------
+function edit-filewithbackup {
     <#
     .SYNOPSIS
     Copies the target file to an 'old' directory (creates the old directory if
@@ -639,48 +617,47 @@ function prompt {
     Online list: http://ourwiki/twiki501/bin/view/Main/DBA/PowershellFunctions
     
     #>
-      Param( [String] $FILE_TO_EDIT)
+    Param( [String] $FILE_TO_EDIT)
     
-      write-debug "vidate-ing $FILE_TO_EDIT"
+    write-debug "vidate-ing $FILE_TO_EDIT"
     #
-      # Work out what the 'old' folder would be
-      $FS_FILE_TO_EDIT="Filesystem::$FILE_TO_EDIT"
-      $OLD_FOLDER = $(gci $FS_FILE_TO_EDIT).directory
-      $OLD_FOLDER = "Filesystem::$OLD_FOLDER\old"
-      write-debug "Old folder is $OLD_FOLDER"
+    # Work out what the 'old' folder would be
+    $FS_FILE_TO_EDIT = "Filesystem::$FILE_TO_EDIT"
+    $OLD_FOLDER = $(gci $FS_FILE_TO_EDIT).directory
+    $OLD_FOLDER = "Filesystem::$OLD_FOLDER\old"
+    write-debug "Old folder is $OLD_FOLDER"
     
-      # If 'old' folder doesn't exist, create it
-      $OLD_FOLDER_EXISTS = test-path $OLD_FOLDER
-      if ($OLD_FOLDER_EXISTS -eq $FALSE)
-      {
+    # If 'old' folder doesn't exist, create it
+    $OLD_FOLDER_EXISTS = test-path $OLD_FOLDER
+    if ($OLD_FOLDER_EXISTS -eq $FALSE) {
         mkdir $OLD_FOLDER
-      }
-    
-      # get the date in YYYYMMDD format
-      $DATE_SUFFIX = get-date -uformat "%Y%m%d"
-    
-      # get the filename without the folder
-      $FILENAME = $(gci $FS_FILE_TO_EDIT).name
-      write-debug "FILENAME is $FILENAME"
-    
-      # copy the existing file to the 'old' directory
-      $OLD_FILE = $OLD_FOLDER + "\" + $FILENAME + "_" + $DATE_SUFFIX
-      write-debug "OLD_FILE is $OLD_FILE"
-      copy $FS_FILE_TO_EDIT $OLD_FILE
-    
-      # edit the file you first thought of (the out-null makes it wait)
-      gvim "$FILE_TO_EDIT" | out-null
-    
-      # show the file edited, and its backup copies
-      dir $FILE_TO_EDIT | select fullname, lastwritetime | ft -a
-      dir $OLD_FOLDER\$FILENAME* | select fullname, lastwritetime | ft -a
     }
-    set-alias vidate edit-filewithbackup
-    set-alias vd edit-filewithbackup
     
-    # vim: set softtabstop=2 shiftwidth=2 expandtab
+    # get the date in YYYYMMDD format
+    $DATE_SUFFIX = get-date -uformat "%Y%m%d"
     
-    function get-ContentFromLastFile {
+    # get the filename without the folder
+    $FILENAME = $(gci $FS_FILE_TO_EDIT).name
+    write-debug "FILENAME is $FILENAME"
+    
+    # copy the existing file to the 'old' directory
+    $OLD_FILE = $OLD_FOLDER + "\" + $FILENAME + "_" + $DATE_SUFFIX
+    write-debug "OLD_FILE is $OLD_FILE"
+    copy $FS_FILE_TO_EDIT $OLD_FILE
+    
+    # edit the file you first thought of (the out-null makes it wait)
+    gvim "$FILE_TO_EDIT" | out-null
+    
+    # show the file edited, and its backup copies
+    dir $FILE_TO_EDIT | select fullname, lastwritetime | ft -a
+    dir $OLD_FOLDER\$FILENAME* | select fullname, lastwritetime | ft -a
+}
+set-alias vidate edit-filewithbackup
+set-alias vd edit-filewithbackup
+    
+# vim: set softtabstop=2 shiftwidth=2 expandtab
+    
+function get-ContentFromLastFile {
     <#
     .SYNOPSIS
         Show content of last file for filespec
@@ -694,23 +671,23 @@ function prompt {
         get-contentfromlastfile c:\temp\*.log
     
     #>
-        [CmdletBinding()]
-        Param( [string]$FileSpecification = "C:\temp\*.log" )
+    [CmdletBinding()]
+    Param( [string]$FileSpecification = "C:\temp\*.log" )
     
-        write-startfunction
+    write-startfunction
     
-        $LatestFile = Get-ChildItem $FileSpecification | sort-object -property lastwritetime | select -last 1 | select fullname
-        write-debug "`$LatestFile: <$LatestFile>"
+    $LatestFile = Get-ChildItem $FileSpecification | sort-object -property lastwritetime | select -last 1 | select fullname
+    write-debug "`$LatestFile: <$LatestFile>"
     
-        get-content $LatestFile.fullname
+    get-content $LatestFile.fullname
     
-        write-endfunction
+    write-endfunction
     
-    }
+}
     
-    set-alias gcflf get-ContentFromLastFile
+set-alias gcflf get-ContentFromLastFile
     
-    function edit-ContentFromLastFile {
+function edit-ContentFromLastFile {
     <#
     .SYNOPSIS
         Edit content of last file for filespec
@@ -723,23 +700,23 @@ function prompt {
         get-contentfromlastfile c:\temp\*.log
     
     #>
-        [CmdletBinding()]
-        Param( [string]$FileSpecification = "C:\temp\*.log" )
+    [CmdletBinding()]
+    Param( [string]$FileSpecification = "C:\temp\*.log" )
     
-        write-startfunction
+    write-startfunction
     
-        $LatestFile = Get-ChildItem $FileSpecification | sort-object -property lastwritetime | select -last 1 | select fullname
+    $LatestFile = Get-ChildItem $FileSpecification | sort-object -property lastwritetime | select -last 1 | select fullname
     
     
-        gvim $LatestFile.fullname
+    gvim $LatestFile.fullname
     
-        write-endfunction
+    write-endfunction
     
-    }
-    set-alias ecflf edit-ContentFromLastFile
-    set-alias eflf edit-ContentFromLastFile
+}
+set-alias ecflf edit-ContentFromLastFile
+set-alias eflf edit-ContentFromLastFile
     
-    function edit-CopiedVersionOfLastFileWithPsEdit {
+function edit-CopiedVersionOfLastFileWithPsEdit {
     <#
     .SYNOPSIS
         Edit content of last file for filespec
@@ -752,33 +729,33 @@ function prompt {
         get-contentfromlastfile c:\temp\*.log
     
     #>
-        [CmdletBinding()]
-        Param( [string]$FileSpecification = "C:\temp\*.log",
-               [string][ValidateSet('Manager', 'Job', 'Department','All')]$Option )
+    [CmdletBinding()]
+    Param( [string]$FileSpecification = "C:\temp\*.log",
+        [string][ValidateSet('Manager', 'Job', 'Department', 'All')]$Option )
     
     
     
-        $LatestFile = Get-ChildItem $FileSpecification | sort-object -property lastwritetime | select -last 1
+    $LatestFile = Get-ChildItem $FileSpecification | sort-object -property lastwritetime | select -last 1
     
-        [string]$Fullname = $LatestFile.FullName
-        [string]$Name = $LatestFile.Name
-        Write-Debug "`$Fullname: <$Fullname>"
+    [string]$Fullname = $LatestFile.FullName
+    [string]$Name = $LatestFile.Name
+    Write-Debug "`$Fullname: <$Fullname>"
     
-        $NewName = $Name -replace 'txt','ps1'
-        $NewName = "c:\temp\" + $NewName
-        Write-Debug "`$NewName: <$NewName>"
+    $NewName = $Name -replace 'txt', 'ps1'
+    $NewName = "c:\temp\" + $NewName
+    Write-Debug "`$NewName: <$NewName>"
     
-        copy-item $Fullname $NewName
+    copy-item $Fullname $NewName
     
-        psedit $NewName
+    psedit $NewName
     
     
     
-    }
-    set-alias psflf edit-CopiedVersionOfLastFileWithPsEdit
-    set-alias pflf edit-CopiedVersionOfLastFileWithPsEdit
+}
+set-alias psflf edit-CopiedVersionOfLastFileWithPsEdit
+set-alias pflf edit-CopiedVersionOfLastFileWithPsEdit
     
-    function get-ContentFromLastFileTailAndWait {
+function get-ContentFromLastFileTailAndWait {
     <#
     .SYNOPSIS
         Show content of last file for filespec
@@ -792,27 +769,27 @@ function prompt {
         get-contentfromlastfile c:\temp\*.log
     
     #>
-        [CmdletBinding()]
-        Param( [string]$FileSpecification = "C:\temp\*.log" )
+    [CmdletBinding()]
+    Param( [string]$FileSpecification = "C:\temp\*.log" )
     
-        write-startfunction
+    write-startfunction
     
-        $LatestFile = Get-ChildItem $FileSpecification | sort-object -property lastwritetime | select -last 1 | select fullname
-    
-    
-        Get-Content  -Tail 200 -Wait  -Path $LatestFile.fullname
-    
-        write-endfunction
-    
-    }
-    
-    set-alias tcflf get-ContentFromLastFileTailAndWait
-    set-alias tflf get-ContentFromLastFileTailAndWait
+    $LatestFile = Get-ChildItem $FileSpecification | sort-object -property lastwritetime | select -last 1 | select fullname
     
     
+    Get-Content  -Tail 200 -Wait  -Path $LatestFile.fullname
+    
+    write-endfunction
+    
+}
+    
+set-alias tcflf get-ContentFromLastFileTailAndWait
+set-alias tflf get-ContentFromLastFileTailAndWait
     
     
-    function get-HelpSummary {
+    
+    
+function get-HelpSummary {
     <#
     .SYNOPSIS
         get synopsis and examples in a format that can be converted to Markdown
@@ -826,63 +803,62 @@ function prompt {
     .EXAMPLE
         Another example of how to use this cmdlet
     #>
-        [CmdletBinding()]
-        Param( [string]$module = "*",
-               [string]$name = "*"  )
+    [CmdletBinding()]
+    Param( [string]$module = "*",
+        [string]$name = "*"  )
     
-        write-startfunction
+    write-startfunction
     
-        $CmdletDetails = foreach ($C in $(get-command -module $Module -name $name ))
-        {
+    $CmdletDetails = foreach ($C in $(get-command -module $Module -name $name )) {
     
-            # $C = "get-topprocesses"
+        # $C = "get-topprocesses"
     
-            $Help = get-help $C
+        $Help = get-help $C
     
-            [string]$FunctionName = $C.Name
+        [string]$FunctionName = $C.Name
     
-            [string]$Synopsis = $Help.Synopsis
+        [string]$Synopsis = $Help.Synopsis
     
-            $Examples = get-help -examples $C | select -expandproperty Examples | select -ExpandProperty example | select code,title
+        $Examples = get-help -examples $C | select -expandproperty Examples | select -ExpandProperty example | select code, title
     
-            [string]$ExampleString = ""
-            Foreach ($E in $(get-help -examples $C | select -expandproperty Examples | select -ExpandProperty example | select code,title))
-            {
+        [string]$ExampleString = ""
+        Foreach ($E in $(get-help -examples $C | select -expandproperty Examples | select -ExpandProperty example | select code, title)) {
     
-                [string]$Title = $E.title
-                [string]$Code = $E.code
+            [string]$Title = $E.title
+            [string]$Code = $E.code
     
-                write-debug "`$Title: <$Title>"
-                write-debug "`$Code: <$code>"
+            write-debug "`$Title: <$Title>"
+            write-debug "`$Code: <$code>"
     
-                $ExampleString = @"
+            $ExampleString = @"
     $ExampleString
     $Title
     $Code
 "@
-            }
-    
-            write-debug "`$FunctionName : <$FunctionName>"
-            write-debug "`$Synopsis: <$Synopsis>"
-            write-debug "`$ExampleString : <$ExampleString>"
-    
-            [PSCustomObject]@{  Name = $FunctionName
-                                Synopsis = $Synopsis
-                                Examples = $ExampleString }
-    
         }
     
-        return $CmdLetDetails
+        write-debug "`$FunctionName : <$FunctionName>"
+        write-debug "`$Synopsis: <$Synopsis>"
+        write-debug "`$ExampleString : <$ExampleString>"
     
-        write-endfunction
+        [PSCustomObject]@{  Name = $FunctionName
+            Synopsis = $Synopsis
+            Examples = $ExampleString 
+        }
     
     }
     
-    <#
+    return $CmdLetDetails
+    
+    write-endfunction
+    
+}
+    
+<#
     vim: tabstop=4 softtabstop=4 shiftwidth=4 expandtab
     #>
     
-    function select-StringsFromCode {
+function select-StringsFromCode {
     <#
     .SYNOPSIS
     Searches for specified text in functions folder
@@ -890,23 +866,19 @@ function prompt {
     This function is autoloaded
     #>
     param ($SearchString)
-     $DownloadedModules = @("EnhancedHTML2","Pester","OperationValidation","PSRemoteRegistry","PSScriptAnalyzer","xNetworking")
-     select-string $SearchString $FunctionsFolder\*.ps1 | select path, line
-    foreach ($M in $(dir -recurse $Modules *.p*1 -exclude $DownloadedModules))
-     {
-         [string]$fullname = $M.fullname; select-string $SearchString $fullname | select path, line
+    $DownloadedModules = @("EnhancedHTML2", "Pester", "OperationValidation", "PSRemoteRegistry", "PSScriptAnalyzer", "xNetworking")
+    select-string $SearchString $FunctionsFolder\*.ps1 | select path, line
+    foreach ($M in $(dir -recurse $Modules *.p*1 -exclude $DownloadedModules)) {
+        [string]$fullname = $M.fullname; select-string $SearchString $fullname | select path, line
     }
     select-string $SearchString $UnGithubbedFunctionsFolder\*.ps1 | select path, line
     
-    }
+}
     
-    set-alias sfs select-StringsFromCode
-    set-alias gfs sfs
-    
-    
-    
-    
-    function New-PSCustomObjectStatementFromObject {
+set-alias sfs select-StringsFromCode
+set-alias gfs sfs
+
+function New-PSCustomObjectStatementFromObject {
     <#
     .SYNOPSIS
         One-line description
@@ -917,47 +889,46 @@ function prompt {
     .EXAMPLE
         Example of how to use this cmdlet
     #>
-        [CmdletBinding()]
-        Param
-            (
-                $ObjectArray,
-                [ValidateSet('FromObject','ReplaceString','Variable')]$EqualsWhat = 'ReplaceString'
-            )
-        write-startfunction
+    [CmdletBinding()]
+    Param
+    (
+        $ObjectArray,
+        [ValidateSet('FromObject', 'ReplaceString', 'Variable')]$EqualsWhat = 'ReplaceString'
+    )
+    write-startfunction
     
-        $Members = $ObjectArray[0] | get-member
+    $Members = $ObjectArray[0] | get-member
     
-        write-output "`$ReplaceThis = [PSCustomObject]@{``"
-        foreach ($M in $($Members | where memberType -in ("NoteProperty","Property","ScriptProperty")))
-        {
-            [string]$Name = $M.name
+    write-output "`$ReplaceThis = [PSCustomObject]@{``"
+    foreach ($M in $($Members | where memberType -in ("NoteProperty", "Property", "ScriptProperty"))) {
+        [string]$Name = $M.name
     
-            switch ($EqualsWhat) {
-                'FromObject' {
-                    $EqualsString = "`$ReplaceThis.$Name"
-                }
-                'ReplaceString' {
-                    $EqualsString = "`"ReplaceThis`""
-                }
-                'Variable' {
-                    $EqualsString = "`$$Name"
-                }
+        switch ($EqualsWhat) {
+            'FromObject' {
+                $EqualsString = "`$ReplaceThis.$Name"
             }
-    
-            write-output "    $Name = $EqualsString"
-    
+            'ReplaceString' {
+                $EqualsString = "`"ReplaceThis`""
+            }
+            'Variable' {
+                $EqualsString = "`$$Name"
+            }
         }
     
-        Write-Output "}"
-    
-        write-endfunction
+        write-output "    $Name = $EqualsString"
     
     }
     
+    Write-Output "}"
+    
+    write-endfunction
+    
+}
     
     
     
-    function cdd {
+    
+function cdd {
     <#
     .SYNOPSIS
         Implements $CDPATH-like functionality
@@ -969,33 +940,33 @@ function prompt {
     .EXAMPLE
         cd CheckSystems
     #>
-        [CmdletBinding()]
+    [CmdletBinding()]
     
-        param($path,
-              $CdPath = "c:\powershell;c:\powershell\modules;c:\powershell\scripts;c:\")
-        if(-not $path){return;}
+    param($path,
+        $CdPath = "c:\powershell;c:\powershell\modules;c:\powershell\scripts;c:\")
+    if (-not $path) {return; }
     
-        if((test-path $path) -or (-not $CDPATH)){
-            Set-Location $path
-            return
-        }
-        $cdpath = $CDPATH.split(";") | % { $ExecutionContext.InvokeCommand.ExpandString($_) }
-        $npath = ""
-        foreach($p in $cdpath){
-            $tpath = join-path $p $path
-            if(test-path $tpath){$npath = $tpath; break;}
-        }
-        if($npath){
-            write-host -fore yellow "Using CDPATH. Going to $npath"
-            Set-Location $npath
-            return
-        }
-    
-        set-location $path
-    
+    if ((test-path $path) -or (-not $CDPATH)) {
+        Set-Location $path
+        return
+    }
+    $cdpath = $CDPATH.split(";") | % { $ExecutionContext.InvokeCommand.ExpandString($_) }
+    $npath = ""
+    foreach ($p in $cdpath) {
+        $tpath = join-path $p $path
+        if (test-path $tpath) {$npath = $tpath; break; }
+    }
+    if ($npath) {
+        write-host -fore yellow "Using CDPATH. Going to $npath"
+        Set-Location $npath
+        return
     }
     
-    function move-MtpCrudFilesToCrudFolder {
+    set-location $path
+    
+}
+    
+function move-MtpCrudFilesToCrudFolder {
     <#
     .SYNOPSIS
         Moves files ending in ~ or .swp to a crud folder. These files are created by vim
@@ -1006,33 +977,32 @@ function prompt {
     .EXAMPLE
         Example of how to use this cmdlet
     #>
-        [CmdletBinding()]
-        Param
-            (
-                [string]$Folder = "."
+    [CmdletBinding()]
+    Param
+    (
+        [string]$Folder = "."
     
-            )
-        write-startfunction
+    )
+    write-startfunction
     
-        if (! (test-path -PathType Container -Path $Folder))
-        {
-            throw "$folder doesnt exist. Or it isn't a folder"
-        }
-    
-        $DateNow = Get-Date -format "yyyyMMddHHmm"
-    
-        $CrudFolder = "$Folder\crud\$DateNow"
-        mkdir -force $CrudFolder | out-null
-    
-        write-debug "move-item $folder/*.swp $CrudFolder -Verbose"
-        move-item $folder/*.swp $CrudFolder -Verbose
-        move-item $folder/*~  $CrudFolder  -verbose
-    
-        write-endfunction
-    
+    if (! (test-path -PathType Container -Path $Folder)) {
+        throw "$folder doesnt exist. Or it isn't a folder"
     }
     
-    function blank-template {
+    $DateNow = Get-Date -format "yyyyMMddHHmm"
+    
+    $CrudFolder = "$Folder\crud\$DateNow"
+    mkdir -force $CrudFolder | out-null
+    
+    write-debug "move-item $folder/*.swp $CrudFolder -Verbose"
+    move-item $folder/*.swp $CrudFolder -Verbose
+    move-item $folder/*~  $CrudFolder  -verbose
+    
+    write-endfunction
+    
+}
+    
+function blank-template {
     <#
     .SYNOPSIS
       One-line description
@@ -1048,10 +1018,10 @@ function prompt {
     .EXAMPLE
       Another example of how to use this cmdlet
     #>
-      write-output "This is an intentionally useless function, that just serves to serve the about help topic"
-    }
+    write-output "This is an intentionally useless function, that just serves to serve the about help topic"
+}
     
-    function about_Markdown {
+function about_Markdown {
     <#
     .SYNOPSIS
       Syntax for .md files
@@ -1075,12 +1045,12 @@ function prompt {
       [Visit GitHub!](https://www.github.com).
     
     #>
-      write-output "This is an intentionally useless function, that just serves to serve the about help topic"
-    }
+    write-output "This is an intentionally useless function, that just serves to serve the about help topic"
+}
     
-    export-modulemember -alias * -function *
+export-modulemember -alias * -function *
     
-    <#
+<#
     .Synopsis
        Short description
     .DESCRIPTION
@@ -1091,108 +1061,101 @@ function prompt {
     .EXAMPLE
        Another example of how to use this cmdlet
     #>
-    function Get-ExtendedFileProperties
+function Get-ExtendedFileProperties
+{
+    [CmdletBinding()]
+    [Alias()]
+    Param( [string]$folder = "$pwd" )
     
-    {
-      [CmdletBinding()]
-      [Alias()]
-      Param( [string]$folder = "$pwd" )
-    
-      Begin
-      {
+    Begin {
         $CurrentlyKnownTags =
-          "Name",
-          "Size",
-          "Item type",
-          "Date modified",
-          "Date created",
-          "Date accessed",
-          "Attributes",
-          "Availability",
-          "Perceived type",
-          "Owner",
-          "Kind",
-          "Contributing artists",
-          "Album",
-          "Year",
-          "Genre",
-          "Rating",
-          "Authors",
-          "Title",
-          "Comments",
-          "#",
-          "Length",
-          "Bit rate",
-          "Protected",
-          "Total size",
-          "Computer",
-          "File extension",
-          "Filename",
-          "Space free",
-          "Shared",
-          "Folder name",
-          "Folder path",
-          "Folder",
-          "Path",
-          "Type",
-          "Link status",
-          "Space used",
-          "Sharing status"
+        "Name",
+        "Size",
+        "Item type",
+        "Date modified",
+        "Date created",
+        "Date accessed",
+        "Attributes",
+        "Availability",
+        "Perceived type",
+        "Owner",
+        "Kind",
+        "Contributing artists",
+        "Album",
+        "Year",
+        "Genre",
+        "Rating",
+        "Authors",
+        "Title",
+        "Comments",
+        "#",
+        "Length",
+        "Bit rate",
+        "Protected",
+        "Total size",
+        "Computer",
+        "File extension",
+        "Filename",
+        "Space free",
+        "Shared",
+        "Folder name",
+        "Folder path",
+        "Folder",
+        "Path",
+        "Type",
+        "Link status",
+        "Space used",
+        "Sharing status"
     
         write-verbose "$CurrentlyKnownTags $CurrentlyKnownTags"
-      }
+    }
     
     
-      Process
-      {
+    Process {
     
         $shellObject = New-Object -ComObject Shell.Application
     
     
         $Files = Get-ChildItem $folder -recurse
     
-        foreach( $file in $Files )
-        {
+        foreach ( $file in $Files ) {
     
-          write-verbose "Processing file $file"
+            write-verbose "Processing file $file"
     
-          $directoryObject = $shellObject.NameSpace( $file.Directory.FullName )
+            $directoryObject = $shellObject.NameSpace( $file.Directory.FullName )
     
-          $fileObject = $directoryObject.ParseName( $file.Name )
-          $RawFileProperties = New-Object PSObject
+            $fileObject = $directoryObject.ParseName( $file.Name )
+            $RawFileProperties = New-Object PSObject
     
-          for( $index = 0 ; $index -lt 1000; ++$index )
-          {
+            for ( $index = 0 ; $index -lt 1000; ++$index ) {
     
-            $name = $directoryObject.GetDetailsOf( $directoryObject.Items, $index )
+                $name = $directoryObject.GetDetailsOf( $directoryObject.Items, $index )
     
-            $value = $directoryObject.GetDetailsOf( $fileObject, $index )
+                $value = $directoryObject.GetDetailsOf( $fileObject, $index )
     
-            if ($name -ne "")
-            {
-              Add-Member -InputObject $RawFileProperties -MemberType NoteProperty -Name $name.replace(" ","") -value "$value"
-              write-debug "Adding Member -Name $name -value $value"
+                if ($name -ne "") {
+                    Add-Member -InputObject $RawFileProperties -MemberType NoteProperty -Name $name.replace(" ", "") -value "$value"
+                    write-debug "Adding Member -Name $name -value $value"
     
-              # todo: Check for unknown attributes (wull also check for atypical mp3 attributes). Logging both to some sort of error log
-              #
-              # if not in array
-              # then
-              #   write to errorlog file
-              #
+                    # todo: Check for unknown attributes (wull also check for atypical mp3 attributes). Logging both to some sort of error log
+                    #
+                    # if not in array
+                    # then
+                    #   write to errorlog file
+                    #
+                }
             }
-          }
     
-        return $RawFileProperties
+            return $RawFileProperties
     
         }
     
-      }
-      End
-      {
-      }
     }
+    End {
+    }
+}
     
-    <#
+<#
     .SYNOPSIS
        Short description
     
@@ -1206,20 +1169,17 @@ function prompt {
     .EXAMPLE
        Another example of how to use this cmdlet
     #>
-    function Get-Mp3Poperties
+function Get-Mp3Poperties
+{
+    [CmdletBinding()]
+    [Alias()]
+    Param( [string]$folder = "$pwd" )
     
-    {
-      [CmdletBinding()]
-      [Alias()]
-      Param( [string]$folder = "$pwd" )
-    
-      Begin
-      {
-      }
+    Begin {
+    }
     
     
-      Process
-      {
+    Process {
     
         # Todo: Need to remember/work out how to pass switches betwwen functions i.e. -verbose and -recurse
         Get-ExtendedFileProperties -folder $folder
@@ -1227,218 +1187,209 @@ function prompt {
     
         $Files = Get-ChildItem $folder -recurse
     
-        foreach( $file in $Files )
-        {
+        foreach ( $file in $Files ) {
     
-          write-verbose "Processing file $file"
+            write-verbose "Processing file $file"
     
-          $Mp3Object = New-Object -PSObject -Property @{}
+            $Mp3Object = New-Object -PSObject -Property @{}
     
-          return $Mp3Object
+            return $Mp3Object
     
         }
     
-      }
-      End
-      {
-      }
     }
+    End {
+    }
+}
     
-    # todo: function to just extract the mp3 stuff
-    #
+# todo: function to just extract the mp3 stuff
+#
     
     
-    # $X = Get-ExtendedFileProperties -folder "D:\music\Desm*" -verbose
-    # $X | select Size, Album
-    # vim: set softtabstop=2 shiftwidth=2 expandtab
+# $X = Get-ExtendedFileProperties -folder "D:\music\Desm*" -verbose
+# $X | select Size, Album
+# vim: set softtabstop=2 shiftwidth=2 expandtab
     
-    function get-duplicates
-    {
+function get-duplicates {
     
-      [CmdletBinding()]
-      param
-      (
-        [Parameter(Mandatory=$True,
-        ValueFromPipeline=$True,
-        ValueFromPipelineByPropertyName=$True,
-          HelpMessage='What folder(s) would you like to target?')]
+    [CmdletBinding()]
+    param
+    (
+        [Parameter(Mandatory = $True,
+            ValueFromPipeline = $True,
+            ValueFromPipelineByPropertyName = $True,
+            HelpMessage = 'What folder(s) would you like to target?')]
         [string[]]$folders,
     
         [string]$check_method = 'S'
-      )
+    )
     
     
-      function validate-folder
-      {
+    function validate-folder {
         param ($p_folder)
     
         write-verbose "Validating folder $p_folder"
     
         # if not valid folder...
-        if ($(test-path $p_folder) -eq $TRUE)
-        {
-          write-verbose "Folder $p_folder is hunky-dory"
+        if ($(test-path $p_folder) -eq $TRUE) {
+            write-verbose "Folder $p_folder is hunky-dory"
         }
-        else
-        {
-          write-host "$p_folder isn't valid"
+        else {
+            write-host "$p_folder isn't valid"
         }
     
-      }
+    }
     
-      function get-filelist
-      {
+    function get-filelist {
         parameter ($p_folders)
     
         write-verbose "Validating folder $p_folders"
     
-      }
+    }
     
-      # Validate each folder
-      foreach ($folder in $folders)
-      {
+    # Validate each folder
+    foreach ($folder in $folders) {
         validate-folder $folder
         $FILE_LIST += gci -recurse $folder
-      }
+    }
     
-      foreach ($FILE in $FILE_LIST)
-      {
+    foreach ($FILE in $FILE_LIST) {
         $SORT_KEY = $FILE.fullname
         $SORT_KEY.toupper()
     
-      }
-      # sort the list as specified by the parameter
-      $SORTED_FILE_LIST = $FILE_LIST | sort-object -property length
+    }
+    # sort the list as specified by the parameter
+    $SORTED_FILE_LIST = $FILE_LIST | sort-object -property length
     
-      foreach ($FILE in $SORTED_FILE_LIST)
-      {
+    foreach ($FILE in $SORTED_FILE_LIST) {
         # For each file, check whether it's key is the same as the previous key
     
-        if ($LAST.length -eq $FILE.length )
-        {
-          $LAST
+        if ($LAST.length -eq $FILE.length ) {
+            $LAST
         }
         $LAST = $FILE
-      }
-    
     }
     
-    function dirod {
+}
+    
+function dirod {
     <#
     .SYNOPSIS
     Does an equivalent of ls -ltr or dir /od
     #>
     Param ($DirName = "." );
     
-    get-childitem $DirName | sort-object -property lastwritetime |  select lastwritetime, length, mode, fullname}
+    get-childitem $DirName | sort-object -property lastwritetime |  select lastwritetime, length, mode, fullname
+}
     
-    function lsltr {
+function lsltr {
     <#
     .SYNOPSIS
     Does an equivalent of ls -ltr or dir /od
     #>
-    Param ($DirName = "." ); dir $DirName | sort-object -property lastwritetime}
+    Param ($DirName = "." ); dir $DirName | sort-object -property lastwritetime
+}
     
-    function wcl {
+function wcl {
     <#
     .SYNOPSIS
     Does an equivalent of wc 0k
     #>
-    Param ($FileName = "$PROFILE" ); gc $Filename | measure-object -line}
+    Param ($FileName = "$PROFILE" ); gc $Filename | measure-object -line
+}
     
-    function gvim
-    <#
+function gvim
+<#
     .SYNOPSIS
     Edits file and returns control to Poswershell command line
-    #>
-    { [CmdletBinding()]
-      param ($FileNames)
+    #> {
+    [CmdletBinding()]
+    param ($FileNames)
     
     
-      foreach ($F in $FileNames)
-      {
+    foreach ($F in $FileNames) {
         & "C:\Program Files (x86)\vim\vim74\gvim.exe" $F
         write-verbose "Edited $(dir $F | select fullname, lastwritetime, length | ft -a)"
-      }
-    
     }
     
-    function convert-MtpObjectToHashTables {
-        [CmdletBinding()]
-        param (
-            $InputObject
-        )
+}
+    
+function convert-MtpObjectToHashTables {
+    [CmdletBinding()]
+    param (
+        $InputObject
+    )
     
     
-        $HashTableCollection = @()
+    $HashTableCollection = @()
     
-        foreach ($D in $InputObject) {
+    foreach ($D in $InputObject) {
     
-            $HashTable = @{}
+        $HashTable = @{}
     
-            $NamesAndValues = $($D).psobject | select -expand properties | select name, value
+        $NamesAndValues = $($D).psobject | select -expand properties | select name, value
     
-            foreach ($N in $NamesAndValues) {
+        foreach ($N in $NamesAndValues) {
     
-                $HashTable."$($N.Name)" = $N.Value
+            $HashTable."$($N.Name)" = $N.Value
     
-            }
-    
-            $HashTableCollection += $HashTable
         }
     
-        $HashTableCollection
-    
+        $HashTableCollection += $HashTable
     }
     
-    function get-GeneratedSplatLines {
-        [CmdletBinding()]
-        param (
-            [string]$Function = "get-service"
-        )
+    $HashTableCollection
     
-        [string]$SplatString = @"
+}
+    
+function get-GeneratedSplatLines {
+    [CmdletBinding()]
+    param (
+        [string]$Function = "get-service"
+    )
+    
+    [string]$SplatString = @"
     `$SplatParams = @{
 "@
     
-        $Parameters = get-command $Function | Select-Object -ExpandProperty Parameters
+    $Parameters = get-command $Function | Select-Object -ExpandProperty Parameters
     
-        $CommonParameters = 'Verbose',
-            'Debug',
-            'ErrorAction',
-            'WarningAction',
-            'InformationAction',
-            'ErrorVariable',
-            'WarningVariable',
-            'InformationVariable',
-            'OutVariable',
-            'OutBuffer',
-            'PipelineVariable'
+    $CommonParameters = 'Verbose',
+    'Debug',
+    'ErrorAction',
+    'WarningAction',
+    'InformationAction',
+    'ErrorVariable',
+    'WarningVariable',
+    'InformationVariable',
+    'OutVariable',
+    'OutBuffer',
+    'PipelineVariable'
     
     
-        ForEach ($P in $Parameters.Keys) {
-            [string]$Key = $P
+    ForEach ($P in $Parameters.Keys) {
+        [string]$Key = $P
     
-            if($CommonParameters -notcontains $Key) {
+        if ($CommonParameters -notcontains $Key) {
     
-                $SplatString = @"
+            $SplatString = @"
     $SplatString
     $Key = `$$Key
 "@
     
-            }
-    
         }
+    
+    }
     
     $SplatString = @"
         $SplatString
         }
 "@
     
-        $SplatString
+    $SplatString
     
-    }
+}
     
-    get-GeneratedSplatLines get-service
+get-GeneratedSplatLines get-service
     
-    export-modulemember -alias * -function *
+export-modulemember -alias * -function *
