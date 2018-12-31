@@ -1049,7 +1049,8 @@ function about_Markdown {
 }
     
 export-modulemember -alias * -function *
-    
+
+function Get-ExtendedFileProperties {
 <#
     .Synopsis
        Short description
@@ -1061,8 +1062,8 @@ export-modulemember -alias * -function *
     .EXAMPLE
        Another example of how to use this cmdlet
     #>
-function Get-ExtendedFileProperties
-{
+
+
     [CmdletBinding()]
     [Alias()]
     Param( [string]$folder = "$pwd" )
