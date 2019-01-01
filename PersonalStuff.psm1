@@ -171,102 +171,6 @@ function get-MTPGitStatusAsObjects
     $GitStatusAsObjects
 
 }
-function get-MTPGitModifiedFilesCommands {
-    [CmdletBinding()]
-    Param
-    (
-        [Parameter(Position = 0)]
-        $GitStatusOutput
-    )
-    
-    $ModifiedFiles = get-MTPGitModifiedFiles -GitStatusOutput $GitStatusOutput
-    foreach ($F in $ModifiedFiles) {
-        [string]$File = $F.Line
-        $File = $File.trim()
-        write-output "git add `"$File`""
-    }
-    
-}
-
-function get-MTPGitUntrackedFilesCommands {
-    [CmdletBinding()]
-    Param
-    (
-        [Parameter(Position = 0)]
-        $GitStatusOutput
-    )
-    
-    $UntrackedFiles = get-MTPGitUntrackedFiles -GitStatusOutput $GitStatusOutput
-    foreach ($F in $UntrackedFiles) {
-        [string]$File = $F.Line
-        $File = $File.trim()
-        write-output "git add `"$File`""
-    }
-    
-}
-    
-function get-MTPGitStatus {
-    [CmdletBinding()]
-    
-    $GitStatusOutput = git status | select-string '^'
-    
-    $GitStatusOutput = $GitStatusOutput |
-        where-object Line -notlike "*~" |
-        where-object Line -notlike "*swp*" |
-        where-object Line -notlike "*swo" |
-        where-object Line -notlike '(use "git add <file>..." to include in what will be committed)*'
-    
-    $GitStatusOutput
-}
-    
-function get-MTPGitUntrackedFiles {
-    [CmdletBinding()]
-    Param
-    (
-        [Parameter(Position = 0)]
-        $GitStatusOutput,
-    
-        [string]$UntrackedFilesString = "Untracked files:"
-    )
-    $UntrackedFilesLine = $GitStatusOutput | ? line -Like "$UntrackedFilesString*"
-    
-    [int]$UntrackedFilesLineNumber = $UntrackedFilesLine.LineNumber
-    
-    $Untracked = $GitStatusOutput | ? linenumber -gt $UntrackedFilesLineNumber
-    
-    $Untracked
-}
-    
-function get-MTPGitModifiedFiles {
-    [CmdletBinding()]
-    Param
-    (
-        [Parameter(Position = 0)]
-        $GitStatusOutput,
-    
-        [string]$UntrackedFilesString = "Untracked files:"
-    )
-    $UntrackedFilesLine = $GitStatusOutput | ? line -Like "$UntrackedFilesString*"
-    
-    [int]$UntrackedFilesLineNumber = $UntrackedFilesLine.LineNumber
-    
-    $Modified = $GitStatusOutput |
-        ? linenumber -lt $UntrackedFilesLineNumber |
-        ? line -like "*modified:*"
-    
-    
-    
-    $ModifiedFiles = @()
-    
-    foreach ($F in $Modified) {
-        [string]$Line = $F.Line
-        write-host "$Line"
-    
-        $ModifiedFiles += [PSCustomObject]@{Line = $Line.split(':')[1] }
-    }
-    
-    $ModifiedFiles
-}
     
 set-alias ggac get-MTPgitaddandRemoveCommands
     
@@ -366,7 +270,38 @@ set-alias temp get-template
     #>
     
 # $QuickReferenceFolder = "c:\users\$($($Env:Username).trimend('2'))\Documents\QuickReference\"
-$QuickReferenceFolder = "c:\matt\QuickReference\"
+function Get-QuickReferenceFolder
+{
+    [CmdletBinding()]
+    Param
+    (
+    )
+
+    if ($IsLinux)
+    {
+        $QuickReferenceFolder = "~/QuickReference"
+    }
+    else 
+    {
+        $QuickReferenceFolder = "c:\QuickReference"
+        if (!(test-path $QuickReferenceFolder))
+        {
+            $QuickReferenceFolder = "c:\matt\QuickReference"
+        }
+        
+    }
+
+    if (!(test-path $QuickReferenceFolder))
+    {
+        Write-Warning "`$QuickReferenceFolder: <$QuickReferenceFolder> not found on this machinery"
+    }
+    
+    $QuickReferenceFolder
+}
+
+
+$QuickReferenceFolder = Get-QuickReferenceFolder
+Write-Host "After call to Get-QuickReferenceFolder `$QuickReferenceFolder: <$QuickReferenceFolder>"
     
 function get-LineFromQuickReferenceFiles {
     <#
@@ -392,6 +327,8 @@ function get-LineFromQuickReferenceFiles {
     Param( [String] $Pattern,
         [String] $FilePattern)
     
+    Write-Host "In get-LineFromQuickReferenceFiles `$QuickReferenceFolder: <$QuickReferenceFolder>"
+
     if ($Pattern -ne $null) {
         select-string -Pattern $Pattern -path $QuickReferenceFolder\*$FilePattern*.md
     }
@@ -401,6 +338,8 @@ function get-LineFromQuickReferenceFiles {
     
 }
     
+
+
 function show-quickref {
     <#
     .SYNOPSIS
