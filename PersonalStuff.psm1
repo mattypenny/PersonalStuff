@@ -20,11 +20,7 @@ function prompt {
     .INPUTS
     None. You cannot pipe objects to this function
     
-    .EXAMPLE
-    
-    .EXAMPLE
-    
-    
+  
     
     #>
     [CmdletBinding()]
@@ -51,9 +47,6 @@ function prompt {
     
 }
     
-<#
-    vim: tabstop=2 softtabstop=2 shiftwidth=2 expandtab
-    #>
     
     
     
@@ -64,8 +57,6 @@ function prompt {
     Get files modified between specified dates [sh]
     .DESCRIPTION
     This was either an example from some learning exercise or it was for some very specific purpose that I've forgotten.
-    
-    It's a possible candidate for moving out of the 'automatically loaded' area
     
     .EXAMPLE
     get-childitembydate "*txt" 20 0
@@ -103,40 +94,82 @@ function get-childitembydate {
 <#
     vim: tabstop=4 softtabstop=4 shiftwidth=4 expandtab
     #>
+
+function Get-MTPGitAddAndRemoveCommands {
 <#
-    .Synopsis
-       Generates a 'git add' command for everything that has been changed but not added
-    .DESCRIPTION
-       Generates a 'git add' command for everything that has been changed but not added.
+.Synopsis
+Generates a 'git add' or 'git rm' command for everything that has been changed but not added or removed and not rm-ed
+.DESCRIPTION
+.EXAMPLE
+ggac
     
-       There's probably a better way to do this within git itself, but I couldn't find it!
+git add .gitignore function-convertto-twiki.ps1 function-edit-powershellref.ps1 function-get-gitaddcommand.ps1
     
-       Todo: implement swapping to a folder or folders and generating cd commands and got add commands
-    .EXAMPLE
-       get-gitaddcommand
-    
-       git add .gitignore function-convertto-twiki.ps1 function-edit-powershellref.ps1 function-get-gitaddcommand.ps1
-    
-    .EXAMPLE
-       Another example of how to use this cmdlet
-    #>
-function Get-MTPGitAddCommand {
+#>
     [CmdletBinding()]
     [Alias()]
     [OutputType([int])]
     Param
     (
         [Parameter(Position = 0)]
-        $FolderName = ".",
-    
-        [string]$Option = "All"
+        $FolderName = "."
     )
     
-    $GitStatusOutput = get-MTPGitStatus
+    cd $FolderName
+
+    $GitStatusAsObjects = get-MTPGitStatusAsObjects
     
-    get-MTPGitUntrackedFilesCommands -GitStatusOutput $GitStatusOutput
-    get-MTPGitModifiedFilesCommands -GitStatusOutput $GitStatusOutput
+    foreach ($G in $($GitStatusAsObjects | Where-Object Status -ne 'D')) {
+
+        [string]$Filename = $G.Filename
+
+        Write-Output "git add $Filename"
+
+    }
     
+    foreach ($G in $($GitStatusAsObjects | Where-Object Status -eq 'D')) {
+
+        [string]$Filename = $G.Filename
+
+        Write-Output "git rm $Filename"
+
+    }
+}
+
+function get-MTPGitStatusAsObjects
+{
+    [CmdletBinding()]
+     Param
+    (
+        
+    )
+
+
+    $GitStatusAsString = git status -s
+
+    $GitStatusAsSeperateLines = $GitStatusAsString | Select-String '^'
+
+    
+    $GitStatusAsObjects = @()
+    foreach ($G in $GitStatusAsSeperateLines) {
+
+        [string]$Line = $G.Line
+
+        [string]$Status = $Line.Substring(0,2)
+
+        $Status = $Status.Trim()
+
+        $Filename = $Line.Substring(3, ($Line.Length-3))
+
+        $GitStatusAsObjects += [PSCustomObject]@{
+            Status = $Status
+            Filename = $Filename
+        }
+
+    }
+
+    $GitStatusAsObjects
+
 }
 function get-MTPGitModifiedFilesCommands {
     [CmdletBinding()]
@@ -235,7 +268,7 @@ function get-MTPGitModifiedFiles {
     $ModifiedFiles
 }
     
-set-alias ggac get-MTPgitaddcommand
+set-alias ggac get-MTPgitaddandRemoveCommands
     
     
 function get-toplevelfolders {
