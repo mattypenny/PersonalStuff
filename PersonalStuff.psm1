@@ -20,11 +20,7 @@ function prompt {
     .INPUTS
     None. You cannot pipe objects to this function
     
-    .EXAMPLE
-    
-    .EXAMPLE
-    
-    
+  
     
     #>
     [CmdletBinding()]
@@ -51,9 +47,6 @@ function prompt {
     
 }
     
-<#
-    vim: tabstop=2 softtabstop=2 shiftwidth=2 expandtab
-    #>
     
     
     
@@ -64,8 +57,6 @@ function prompt {
     Get files modified between specified dates [sh]
     .DESCRIPTION
     This was either an example from some learning exercise or it was for some very specific purpose that I've forgotten.
-    
-    It's a possible candidate for moving out of the 'automatically loaded' area
     
     .EXAMPLE
     get-childitembydate "*txt" 20 0
@@ -103,139 +94,85 @@ function get-childitembydate {
 <#
     vim: tabstop=4 softtabstop=4 shiftwidth=4 expandtab
     #>
+
+function Get-MTPGitAddAndRemoveCommands {
 <#
-    .Synopsis
-       Generates a 'git add' command for everything that has been changed but not added
-    .DESCRIPTION
-       Generates a 'git add' command for everything that has been changed but not added.
+.Synopsis
+Generates a 'git add' or 'git rm' command for everything that has been changed but not added or removed and not rm-ed
+.DESCRIPTION
+.EXAMPLE
+ggac
     
-       There's probably a better way to do this within git itself, but I couldn't find it!
+git add .gitignore function-convertto-twiki.ps1 function-edit-powershellref.ps1 function-get-gitaddcommand.ps1
     
-       Todo: implement swapping to a folder or folders and generating cd commands and got add commands
-    .EXAMPLE
-       get-gitaddcommand
-    
-       git add .gitignore function-convertto-twiki.ps1 function-edit-powershellref.ps1 function-get-gitaddcommand.ps1
-    
-    .EXAMPLE
-       Another example of how to use this cmdlet
-    #>
-function Get-MTPGitAddCommand {
+#>
     [CmdletBinding()]
     [Alias()]
     [OutputType([int])]
     Param
     (
         [Parameter(Position = 0)]
-        $FolderName = ".",
-    
-        [string]$Option = "All"
+        $FolderName = "."
     )
     
-    $GitStatusOutput = get-MTPGitStatus
+    cd $FolderName
+
+    $GitStatusAsObjects = get-MTPGitStatusAsObjects
     
-    get-MTPGitUntrackedFilesCommands -GitStatusOutput $GitStatusOutput
-    get-MTPGitModifiedFilesCommands -GitStatusOutput $GitStatusOutput
-    
-}
-function get-MTPGitModifiedFilesCommands {
-    [CmdletBinding()]
-    Param
-    (
-        [Parameter(Position = 0)]
-        $GitStatusOutput
-    )
-    
-    $ModifiedFiles = get-MTPGitModifiedFiles -GitStatusOutput $GitStatusOutput
-    foreach ($F in $ModifiedFiles) {
-        [string]$File = $F.Line
-        $File = $File.trim()
-        write-output "git add `"$File`""
+    foreach ($G in $($GitStatusAsObjects | Where-Object Status -ne 'D')) {
+
+        [string]$Filename = $G.Filename
+
+        Write-Output "git add $Filename"
+
     }
     
+    foreach ($G in $($GitStatusAsObjects | Where-Object Status -eq 'D')) {
+
+        [string]$Filename = $G.Filename
+
+        Write-Output "git rm $Filename"
+
+    }
 }
 
-function get-MTPGitUntrackedFilesCommands {
+function get-MTPGitStatusAsObjects
+{
     [CmdletBinding()]
-    Param
+     Param
     (
-        [Parameter(Position = 0)]
-        $GitStatusOutput
+        
     )
+
+
+    $GitStatusAsString = git status -s
+
+    $GitStatusAsSeperateLines = $GitStatusAsString | Select-String '^'
+
     
-    $UntrackedFiles = get-MTPGitUntrackedFiles -GitStatusOutput $GitStatusOutput
-    foreach ($F in $UntrackedFiles) {
-        [string]$File = $F.Line
-        $File = $File.trim()
-        write-output "git add `"$File`""
+    $GitStatusAsObjects = @()
+    foreach ($G in $GitStatusAsSeperateLines) {
+
+        [string]$Line = $G.Line
+
+        [string]$Status = $Line.Substring(0,2)
+
+        $Status = $Status.Trim()
+
+        $Filename = $Line.Substring(3, ($Line.Length-3))
+
+        $GitStatusAsObjects += [PSCustomObject]@{
+            Status = $Status
+            Filename = $Filename
+        }
+
     }
-    
+
+    $GitStatusAsObjects
+
 }
     
-function get-MTPGitStatus {
-    [CmdletBinding()]
-    
-    $GitStatusOutput = git status | select-string '^'
-    
-    $GitStatusOutput = $GitStatusOutput |
-        where-object Line -notlike "*~" |
-        where-object Line -notlike "*swp*" |
-        where-object Line -notlike "*swo" |
-        where-object Line -notlike '(use "git add <file>..." to include in what will be committed)*'
-    
-    $GitStatusOutput
-}
-    
-function get-MTPGitUntrackedFiles {
-    [CmdletBinding()]
-    Param
-    (
-        [Parameter(Position = 0)]
-        $GitStatusOutput,
-    
-        [string]$UntrackedFilesString = "Untracked files:"
-    )
-    $UntrackedFilesLine = $GitStatusOutput | ? line -Like "$UntrackedFilesString*"
-    
-    [int]$UntrackedFilesLineNumber = $UntrackedFilesLine.LineNumber
-    
-    $Untracked = $GitStatusOutput | ? linenumber -gt $UntrackedFilesLineNumber
-    
-    $Untracked
-}
-    
-function get-MTPGitModifiedFiles {
-    [CmdletBinding()]
-    Param
-    (
-        [Parameter(Position = 0)]
-        $GitStatusOutput,
-    
-        [string]$UntrackedFilesString = "Untracked files:"
-    )
-    $UntrackedFilesLine = $GitStatusOutput | ? line -Like "$UntrackedFilesString*"
-    
-    [int]$UntrackedFilesLineNumber = $UntrackedFilesLine.LineNumber
-    
-    $Modified = $GitStatusOutput |
-        ? linenumber -lt $UntrackedFilesLineNumber |
-        ? line -like "*modified:*"
-    
-    
-    
-    $ModifiedFiles = @()
-    
-    foreach ($F in $Modified) {
-        [string]$Line = $F.Line
-        write-host "$Line"
-    
-        $ModifiedFiles += [PSCustomObject]@{Line = $Line.split(':')[1] }
-    }
-    
-    $ModifiedFiles
-}
-    
-set-alias ggac get-MTPgitaddcommand
+set-alias ggac get-MTPgitaddandRemoveCommands
     
     
 function get-toplevelfolders {
@@ -333,7 +270,38 @@ set-alias temp get-template
     #>
     
 # $QuickReferenceFolder = "c:\users\$($($Env:Username).trimend('2'))\Documents\QuickReference\"
-$QuickReferenceFolder = "c:\matt\QuickReference\"
+function Get-QuickReferenceFolder
+{
+    [CmdletBinding()]
+    Param
+    (
+    )
+
+    if ($IsLinux)
+    {
+        $QuickReferenceFolder = "~/QuickReference"
+    }
+    else 
+    {
+        $QuickReferenceFolder = "c:\QuickReference"
+        if (!(test-path $QuickReferenceFolder))
+        {
+            $QuickReferenceFolder = "c:\matt\QuickReference"
+        }
+        
+    }
+
+    if (!(test-path $QuickReferenceFolder))
+    {
+        Write-Warning "`$QuickReferenceFolder: <$QuickReferenceFolder> not found on this machinery"
+    }
+    
+    $QuickReferenceFolder
+}
+
+
+$QuickReferenceFolder = Get-QuickReferenceFolder
+Write-Host "After call to Get-QuickReferenceFolder `$QuickReferenceFolder: <$QuickReferenceFolder>"
     
 function get-LineFromQuickReferenceFiles {
     <#
@@ -359,6 +327,8 @@ function get-LineFromQuickReferenceFiles {
     Param( [String] $Pattern,
         [String] $FilePattern)
     
+    Write-Host "In get-LineFromQuickReferenceFiles `$QuickReferenceFolder: <$QuickReferenceFolder>"
+
     if ($Pattern -ne $null) {
         select-string -Pattern $Pattern -path $QuickReferenceFolder\*$FilePattern*.md
     }
@@ -368,6 +338,8 @@ function get-LineFromQuickReferenceFiles {
     
 }
     
+
+
 function show-quickref {
     <#
     .SYNOPSIS
