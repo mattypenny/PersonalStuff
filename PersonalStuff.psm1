@@ -1391,6 +1391,5 @@ function get-GeneratedSplatLines {
     
 }
     
-get-GeneratedSplatLines get-service
     
 export-modulemember -alias * -function *
