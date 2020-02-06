@@ -1,4 +1,4 @@
-function prompt {
+function promptx {
     <#
     .SYNOPSIS
     Sets the prompt
@@ -46,9 +46,120 @@ function prompt {
     return " $ "
     
 }
+#>
     
+function Get-CommandDefinition {
+    [CmdletBinding()]
+    param (
+        $Command   
+    )
     
+    foreach ($C in $(get-command "$Command")) {
+
+        $RetrievedCommand = get-command $C
+
+        [string]$Name = $RetrievedCommand.Name
+
+        [string]$Definition = $RetrievedCommand.Definition
+
+        [string]$Result =  @"
+$Result
+$Name`:
+
+$Definition
+
+"@
+
+    }
+    return $Result
+
+}
+set-alias gcmd Get-CommandDefinition
+
+function Write-CommentBasedHelpToMarkdownFile {
+    <#
+    .Synopsis
+    Get name and synopsis from get-help for a module, or modules, and write to specified markdown file
+    .DESCRIPTION
+    This was either an example from some learning exercise or it was for some very specific purpose that I've forgotten.
     
+    .EXAMPLE
+    ipmo -force PersonalStuff ; Write-CommentBasedHelpToMarkdownFile -module SqlStuff,WindowsStuff,PersonalStuff,ShCommonFunctions -MarkDownFile C:\matt\temp\documentation\README.md
+
+    .EXAMPLE
+    ipmo -force PersonalStuff ; Write-CommentBasedHelpToMarkdownFile -module FromTheInternet,SqlStuff,PersonalStuff -MarkDownFile C:\matt\temp\documentation\README.md
+    #>
+    [CmdletBinding()]
+    param (
+        $Module,
+        [string]$MarkDownFile       
+    )
+    
+    $CommentBasedHelpFromModule = get-CommentBasedHelpFromModule -Module $Module
+
+    $CommentsConvertedToMArkdown = $CommentBasedHelpFromModule | 
+                                    Select-Object ModuleName, Name, 
+                                        @{E={$_.synopsis -replace "`r`n",""};L='Synopsisx'} |
+                                    Sort-Object -Property ModuleName, Name |                                    
+                                    # select -first 5 |
+                                    ConvertTo-Markdown 
+
+    $SynopsisString = $CommentsConvertedToMArkdown
+
+
+    <# [string]$FullHelpText   = $CommentBasedHelpFromModule | 
+                                    Sort-Object -Property ModuleName, Name |
+                                    Out-String
+     #>
+    [string]$MarkdownContent = @"
+This page describes all the functions in Powershell modules what I have wrote. The first bit lists the functions, with a short description. The second bit is full help text. It's all derived from the Comment-Based Help, using Write-CommentBasedHelpToMarkdownFile (so don't edit it here) 
+
+## Short description
+
+$SynopsisString
+
+## Full help text
+....such as it is
+
+"@
+    
+    $SynopsisString | out-file  -Encoding ascii  $MarkDownFile
+
+
+}    
+
+
+function get-CommentBasedHelpFromModule {
+    <#
+    .Synopsis
+    Get all the help for all the functions in specified modules
+    #>
+    [CmdletBinding()]
+    param (
+        $Module
+    )
+    
+    $Help = @()
+
+    $ListOfModules = $Module
+    foreach ($M in $ListOfModules) {
+
+        [string]$Module = $M 
+
+        $CommandsInModule= get-command -module $Module
+        
+        foreach ($C in $CommandsInModule) {
+
+            [string]$Command = $C.Name
+
+            $Help += get-help -full $Command
+
+        }
+
+    }
+
+    $Help
+}
     
     
     
@@ -136,6 +247,54 @@ git add .gitignore function-convertto-twiki.ps1 function-edit-powershellref.ps1 
     }
 }
 
+
+function Invoke-MTPGitAddCommitPush {
+    
+        [CmdletBinding()]
+        
+        Param
+        (
+            [Parameter(Position = 0)]
+            $FolderName = "."
+        )
+        
+        cd $FolderName
+    
+        $GitStatusAsObjects = get-MTPGitStatusAsObjects
+        
+        foreach ($G in $($GitStatusAsObjects | Where-Object Status -ne 'D')) {
+    
+            [string]$Filename = $G.Filename
+    
+            git diff $Filename
+
+            $Continue = Read-Host -Prompt "git add?" 
+
+            if ($Continue -eq 'y') {
+                
+                git add $Filename
+                
+                $CommitMessage = Read-Host -Prompt "git message?" 
+
+                $Continue = Read-Host -Prompt "git commit and push?" 
+
+                if ($Continue -eq 'y') {
+
+                    
+                    git commit -m $CommitMessage
+                    git push origin master
+
+                }
+
+
+            }
+    
+        }
+        
+        
+}
+set-alias ggacx Invoke-MTPGitAddCommitPush
+
 function get-MTPGitStatusAsObjects
 {
     [CmdletBinding()]
@@ -182,8 +341,6 @@ function get-toplevelfolders {
     
     .DESCRIPTION
       Handy for looking to see where stuff is installed.
-    
-      This function is autoloaded by .matt.ps1
     .PARAMETER
     
     .EXAMPLE
@@ -216,17 +373,17 @@ set-alias gtlf get-toplevelfolders
     #>
     
 function import-mtpModule {
-    <#
-    .SYNOPSIS
-        Shows module last update time, removes it if its already loaded then imports it
-    .DESCRIPTION
-        Shows module last update time, removes it if its already loaded then imports it
-      This function is autoloaded by .matt.ps1
-    .PARAMETER ModuleName
-        List of Modules to load
-    .EXAMPLE
-        Example of how to use this cmdlet
-    #>
+<#
+.SYNOPSIS
+    Shows module last update time, removes it if its already loaded then imports it
+.DESCRIPTION
+    Shows module last update time, removes it if its already loaded then imports it
+    
+.PARAMETER ModuleName
+    List of Modules to load
+.EXAMPLE
+    Example of how to use this cmdlet
+#>
     [CmdletBinding()]
     Param( [string][Alias ("module")]$ListOfModules = "Bounce-PCs"  )
     
@@ -270,45 +427,55 @@ set-alias temp get-template
     #>
     
 # $QuickReferenceFolder = "c:\users\$($($Env:Username).trimend('2'))\Documents\QuickReference\"
-function Get-QuickReferenceFolder
+function Get-QuickReferenceFolders
 {
     [CmdletBinding()]
     Param
     (
     )
 
+    $QuickReferenceFolders = @()
     if ($IsLinux)
     {
-        $QuickReferenceFolder = "~/QuickReference"
+        $Main = "~/website/content/QuickReference"
     }
     else 
     {
-        $QuickReferenceFolder = "c:\QuickReference"
-        if (!(test-path $QuickReferenceFolder))
+        $Main = "c:\matt\website\QuickReference"
+        if (!(test-path $Main))
         {
-            $QuickReferenceFolder = "c:\matt\QuickReference"
+            $Main = "c:\matt\QuickReference"
         }
         
     }
 
-    if (!(test-path $QuickReferenceFolder))
-    {
-        Write-Warning "`$QuickReferenceFolder: <$QuickReferenceFolder> not found on this machinery"
+    $Staging = "C:\matt\QuickReferenceStaging"
+    $ContextSpecific = "C:\matt\QuickReferenceContextSpecific"
+
+    $QuickReferenceFolders += [PSCustomObject]@{
+        Folder = $Main
+    }
+    $QuickReferenceFolders += [PSCustomObject]@{
+        Folder = $Staging
+    }
+    $QuickReferenceFolders += [PSCustomObject]@{
+        Folder = $ContextSpecific
     }
     
-    $QuickReferenceFolder
+    $QuickReferenceFolders
 }
 
 
-$QuickReferenceFolder = Get-QuickReferenceFolder
-Write-Host "After call to Get-QuickReferenceFolder `$QuickReferenceFolder: <$QuickReferenceFolder>"
+$DefaultQuickReferenceFolders = Get-QuickReferenceFolders
+$DefaultQuickReferenceFoldersCount = $( $DefaultQuickReferenceFolders | measure-object).count
+write-dbg "`$DefaultQuickReferenceFoldersCount: <$DefaultQuickReferenceFoldersCount>"
     
 function get-LineFromQuickReferenceFiles {
     <#
     .SYNOPSIS
     Does a grep on quickref files
     .DESCRIPTION
-    This function is autoloaded by .matt.ps1
+    
     .PARAMETER $Pattern
     What to grep for. e.g. databases
     .INPUTS
@@ -324,16 +491,29 @@ function get-LineFromQuickReferenceFiles {
     
     #>
     [CmdletBinding()]
-    Param( [String] $Pattern,
+    Param( $QuickReferenceFolders = $DefaultQuickReferenceFolders,
+        [String] $Pattern,
         [String] $FilePattern)
     
-    Write-Host "In get-LineFromQuickReferenceFiles `$QuickReferenceFolder: <$QuickReferenceFolder>"
+    
 
     if ($Pattern -ne $null) {
-        select-string -Pattern $Pattern -path $QuickReferenceFolder\*$FilePattern*.md
+        foreach ($Q in $QuickReferenceFolders) {
+
+            $QuickReferenceFolder = $Q.Folder
+
+            select-string -Pattern $Pattern -path $QuickReferenceFolder\*$FilePattern*.md
+        
+        }
+        
     }
     else {
-        gc $QuickReferenceFolder\*.md
+
+        foreach ($Q in $QuickReferenceFolders) {
+
+            $QuickReferenceFolder = $Q.Folder
+            gc $QuickReferenceFolder\*.md
+        }
     }
     
 }
@@ -345,7 +525,7 @@ function show-quickref {
     .SYNOPSIS
     Does a grep on quickref files
     .DESCRIPTION
-    This function is autoloaded by .matt.ps1
+   
     .PARAMETER $Pattern
     What to grep for. e.g. insert
     .PARAMETER $FilePattern
@@ -484,78 +664,7 @@ Set-Alias -Name hh -Value get-MTPHistory
     
     
     
-# ----------------------------------------------------------------------
-# Function: aliasname - dbgon/off
-#
-#           This function just sets debug off (default) or on
-# ----------------------------------------------------------------------
-function set-debug {
-    <#
-    .SYNOPSIS
-    Sets de bugger on or off
-    
-    .DESCRIPTION
-    Changes debug mode between off (silentlycontinue) and on (continue). If no mode specified defaults to off
-    
-    This function is autoloaded by .matt.ps1
-    
-    .PARAMETER P_DEBUG_MODE
-    On or off
-    
-    .INPUTS
-    None. You cannot pipe objects to this function
-    
-    .EXAMPLE
-    dboff - alias to turn it off
-    
-    .EXAMPLE
-    dbon - guess what?
-    
-    .EXAMPLE
-    db on - as above
-    
-    .EXAMPLE
-    db - turns it off
-    
-    #>
-    
-    [CmdletBinding()]
-    Param( [String] $P_DEBUG_MODE = "OFF")
-    
-    set-alias dbg write-debug
-    
-    dbg "P_DEBUG_MODE $P_DEBUG_MODE"
-    
-    dbg " DEBUGPREFENCE is $DEBUGPREFERENCE"
-    if ($P_DEBUG_MODE -eq "ON") {
-        dbg "On DEBUGPREFENCE is $DEBUGPREFERENCE"
-        $DEBUGPREFERENCE = "Continue"
-        dbg "On DEBUGPREFENCE is $DEBUGPREFERENCE"
-    }
-    else {
-        dbg "Off DEBUGPREFENCE is $DEBUGPREFERENCE"
-        $DEBUGPREFERENCE = "SilentlyContinue"
-        dbg "Off DEBUGPREFENCE is $DEBUGPREFERENCE"
-    }
-    $DEBUGPREFERENCE = "SilentlyContinue"
-    dbg "DEBUGPREFENCE is $DEBUGPREFERENCE"
-    
-}
-set-alias db set-debug
-function dbon {
-    <#
-    .SYNOPSIS
-        Sets debug on
-    #>
-    . set-debug on
-}
-function dboff {
-    <#
-    .SYNOPSIS
-        Sets debug off
-    #>
-    . set-debug off
-}
+
 # Not setting an alias here for 'dbg' because I'm intending to use that
 # in the code
     
@@ -573,8 +682,7 @@ function dboff {
 function edit-filewithbackup {
     <#
     .SYNOPSIS
-    Copies the target file to an 'old' directory (creates the old directory if
-    there isn't one) and then edits it
+    Copies the target file to an 'old' directory (creates the old directory if there isn't one) and then edits it
     
     .DESCRIPTION
     The edit-filewithbackup function 'backs up' the target file to an 'old' directory. It creates the 'old' directory under the directory of the target file if it doesn't exist. The backup copy is suffixed with the date and time.
@@ -635,7 +743,7 @@ function get-ContentFromLastFile {
         Show content of last file for filespec
     .DESCRIPTION
         Longer description
-        This function is autoloaded by .matt.ps1
+        
     
     .PARAMETER
         Filespec e.g. c:\temp\*.log
@@ -664,7 +772,7 @@ function edit-ContentFromLastFile {
     .SYNOPSIS
         Edit content of last file for filespec
     .DESCRIPTION
-        This function is autoloaded by .matt.ps1
+  
     
     .PARAMETER
         Filespec e.g. c:\temp\*.log
@@ -733,7 +841,7 @@ function get-ContentFromLastFileTailAndWait {
         Show content of last file for filespec
     .DESCRIPTION
         Longer description
-        This function is autoloaded by .matt.ps1
+
     
     .PARAMETER
         Filespec e.g. c:\temp\*.log
@@ -834,17 +942,29 @@ function select-StringsFromCode {
     <#
     .SYNOPSIS
     Searches for specified text in functions folder
-    
-    This function is autoloaded
     #>
     param ($SearchString)
     $DownloadedModules = @("EnhancedHTML2", "Pester", "OperationValidation", "PSRemoteRegistry", "PSScriptAnalyzer", "xNetworking")
-    select-string $SearchString $FunctionsFolder\*.ps1 | select path, line
-    foreach ($M in $(dir -recurse $Modules *.p*1 -exclude $DownloadedModules)) {
-        [string]$fullname = $M.fullname; select-string $SearchString $fullname | select path, line
-    }
-    select-string $SearchString $UnGithubbedFunctionsFolder\*.ps1 | select path, line
     
+    $Result = @()
+    
+    $Result += select-string $SearchString $FunctionsFolder\*.ps1 | select path, line
+    
+    foreach ($M in $(dir -recurse $Modules *.p*1 -exclude $DownloadedModules)) {
+        [string]$fullname = $M.fullname
+        $Result += select-string $SearchString $fullname | select path, line
+    }
+    
+    foreach ($M in $(dir -recurse C:\powershell\scripts *.p*1 )) {
+        [string]$fullname = $M.fullname
+        $Result += select-string $SearchString $fullname | select path, line
+    }
+    
+    $Result += select-string $SearchString $UnGithubbedFunctionsFolder\*.ps1 | select path, line
+    
+    $Result += select-string $SearchString c:\powershell\boneyard\*.ps1 | select path, line
+
+    $Result
 }
     
 set-alias sfs select-StringsFromCode
@@ -853,10 +973,11 @@ set-alias gfs sfs
 function New-PSCustomObjectStatementFromObject {
     <#
     .SYNOPSIS
-        One-line description
+        Saves some typing if you want to reverse engineer object-creation. Or something like that.
     .DESCRIPTION
         Longer description
-    .PARAMETER
+    .PARAMETER ObjectArray
+    Object that you want the statememt for
     
     .EXAMPLE
         Example of how to use this cmdlet
@@ -1249,12 +1370,57 @@ function dirod {
     <#
     .SYNOPSIS
     Does an equivalent of ls -ltr or dir /od
+    .DESCRIPTION
+    See synopsis
     #>
     Param ($DirName = "." );
     
     get-childitem $DirName | sort-object -property lastwritetime |  select lastwritetime, length, mode, fullname
 }
+  
+function get-MtpChildItemInGb {
+    <#
+    .SYNOPSIS
+    Does an equivalent of ls -ltr or dir /od
+    .DESCRIPTION
+    See synopsis
+    #>
+    Param ( [string]$Path = ".",
+            [switch]$Recurse = $False,
+            [switch]$Force = $False )
     
+    get-childitem $Path -Recurse:$Recurse -force:$Force |  
+        select lastwritetime, 
+            @{Label = "T"; Expression = {$_.mode.Substring(0,1).replace('-','f')  }   },        
+            @{Label = "SzGb"; Expression = {[math]::Round($_.length / 1Gb,1 ) }},    
+            fullname
+}
+Set-Alias dirx get-MtpChildItemInGb
+Set-Alias lsx  get-MtpChildItemInGb
+Set-Alias DirGb get-MtpChildItemInGb
+Set-Alias LsGb get-MtpChildItemInGb
+
+function get-MtpChildItemInMb {
+    <#
+    .SYNOPSIS
+    Does an equivalent of ls -ltr or dir /od
+    .DESCRIPTION
+    See synopsis
+    #>
+    Param ( [string]$Path = ".",
+            [switch]$Recurse = $False,
+            [switch]$Force = $False )
+    
+    get-childitem $Path -Recurse:$Recurse -force:$Force |  
+        select lastwritetime, 
+            @{Label = "T"; Expression = {$_.mode.Substring(0,1).replace('-','f')  }   }, 
+            @{Label = "SzMb"; Expression = {[math]::Round($_.length / 1Mb,1 ) }},                           
+            fullname
+}
+
+Set-Alias DirMb get-MtpChildItemInMb
+Set-Alias LsMb get-MtpChildItemInMb
+
 function lsltr {
     <#
     .SYNOPSIS
@@ -1271,11 +1437,13 @@ function wcl {
     Param ($FileName = "$PROFILE" ); gc $Filename | measure-object -line
 }
     
-function gvim
+function gvimx {
 <#
-    .SYNOPSIS
-    Edits file and returns control to Poswershell command line
-    #> {
+.SYNOPSIS
+Edits file and returns control to Powershell command line
+.EXAMPLE
+gvim x
+#> 
     [CmdletBinding()]
     param ($FileNames)
     
@@ -1288,6 +1456,10 @@ function gvim
 }
     
 function convert-MtpObjectToHashTables {
+    <#
+    .SYNOPSIS
+    Convert object to hash table. Particularly useful for Pester-izing
+    #> 
     [CmdletBinding()]
     param (
         $InputObject
@@ -1322,7 +1494,7 @@ function get-GeneratedSplatLines {
     )
     
     [string]$SplatString = @"
-    `$SplatParams = @{
+`$SplatParams = @{
 "@
     
     $Parameters = get-command $Function | Select-Object -ExpandProperty Parameters
@@ -1337,7 +1509,9 @@ function get-GeneratedSplatLines {
     'InformationVariable',
     'OutVariable',
     'OutBuffer',
-    'PipelineVariable'
+    'PipelineVariable',
+    'WhatIf',
+    'Confirm'
     
     
     ForEach ($P in $Parameters.Keys) {
@@ -1346,7 +1520,7 @@ function get-GeneratedSplatLines {
         if ($CommonParameters -notcontains $Key) {
     
             $SplatString = @"
-    $SplatString
+$SplatString
     $Key = `$$Key
 "@
     
@@ -1355,13 +1529,81 @@ function get-GeneratedSplatLines {
     }
     
     $SplatString = @"
-        $SplatString
-        }
+$SplatString
+}
+
+$Function @SplatParams
 "@
     
     $SplatString
     
 }
     
+function invoke-PesterReturnFailures {
+    [CmdletBinding()]
     
+    param(
+                    [Parameter(Position = 0, Mandatory = 0)]
+                    [Alias('Path', 'relative_path')]
+                    [object[]]$Script = '.',
+
+                    [Parameter(Position = 1, Mandatory = 0)]
+                    [Alias("Name")]
+                    [string[]]$TestName,
+
+                    [Parameter(Position = 2, Mandatory = 0)]
+                    [switch]$EnableExit,
+
+                    [Parameter(Position = 4, Mandatory = 0)]
+                    [Alias('Tags')]
+                    [string[]]$Tag,
+
+                    [string[]]$ExcludeTag,
+
+                    # [switch]$PassThru,
+
+                    [object[]] $CodeCoverage = @(),
+
+                    [string] $CodeCoverageOutputFile,
+
+                    [ValidateSet('JaCoCo')]
+                    [String]$CodeCoverageOutputFileFormat = "JaCoCo",
+
+                    [Switch]$Strict,
+
+                    [Parameter(Mandatory = $false, ParameterSetName = 'NewOutputSet')]
+                    [string] $OutputFile,
+
+                    [Parameter(ParameterSetName = 'NewOutputSet')]
+                    [ValidateSet('NUnitXml')]
+                    [string] $OutputFormat = 'NUnitXml',
+
+                    [Switch]$Quiet,
+
+                    [object]$PesterOption,
+
+                    $Show = 'NotPassed'
+    )
+    
+    
+    $PesterResults = invoke-pester @PSBoundParameters -passthru  
+
+    if ($Show -eq 'All') {
+        $PesterResults | 
+            select -expandproperty testresult | 
+            select Describe, Name, Result
+    } else {
+        $PesterResults | 
+            select -expandproperty testresult | 
+            where result -ne 'Passed' | 
+            select Describe, Name, Result
+    }
+
+    
+}
+
+set-alias ip invoke-PesterReturnFailures
+set-alias pesterize invoke-PesterReturnFailures
+
+
 export-modulemember -alias * -function *
