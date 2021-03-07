@@ -132,7 +132,9 @@ $Definition
     return $Result
 
 }
-set-alias gcmd Get-CommandDefinition
+set-alias gcmdef Get-CommandDefinition
+set-alias showme Get-CommandDefinition
+
 
 function Write-CommentBasedHelpToMarkdownFile {
     <#
@@ -1675,5 +1677,56 @@ function gvimx
     }
     
 }
+
+<#
+.Synopsis
+   Get-CommandExcludingSomeModules
+.EXAMPLE
+   Get-CommandExcludingSomeModules vi
+.EXAMPLE
+   gcmx vi
+#>
+function Get-CommandExcludingSomeModules
+{
+    [CmdletBinding()]
+    
+    Param
+    (
+        # Param1 help description
+        [Parameter(Mandatory=$true,
+                   ValueFromPipelineByPropertyName=$true,
+                   Position=0)]
+        $Name
+
+    )
+    $Modules = Get-Module |
+        where Name -NotMatch "^Az" |
+        where Name -NotMatch "ISE"
+
+
+    get-command -Module $Modules -Name "*$Name*"
+}
+set-alias gcmx Get-CommandExcludingSomeModules
+
+
+function get-CommandFromSpecifiedModules {
+    [CmdletBinding()]
+    
+    Param
+    (
+        # Param1 help description
+        [Parameter(Mandatory=$true,
+                   ValueFromPipelineByPropertyName=$true,
+                   Position=0)]
+        $Name,
+        [string[]]$Module = ('dbatools')
+    )
+
+    get-command -module $Module -name "*$Name*"
+
+}
+
+Set-Alias gcmd get-CommandFromSpecifiedModules
+Set-Alias gcmdba get-CommandFromSpecifiedModules
 
 export-modulemember -alias * -function *
