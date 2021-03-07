@@ -47,7 +47,65 @@ function promptx {
 
 }
 #>
+
+<#
+.Synopsis
+Move files to another folder with date on the front
+.DESCRIPTION
+Long description
+.EXAMPLE
+Move-ChildItemsAndDatePrefix -SourceFolder C:\Users\matty\OneDrive\music\tosort\GroverPro -TargetFolder C:\Users\matty\OneDrive\music\aardvark_old_podcasts 
+#>
+function Move-ChildItemsAndDatePrefix {
+
+    [CmdletBinding()]
+    param (
+        [ValidateScript({
+            if( -Not ($_ | Test-Path) ){
+                throw "Source folder does not exist"
+            }
+            return $true
+        })]
+        [System.IO.FileInfo]$SourceFolder,
+        
+        [ValidateScript({
+            if( -Not ($_ | Test-Path) ){
+                throw "Target folder does not exist"
+            }
+            return $true
+        })]
+        [String]$TargetFolder,
+
+        [switch]$Recurse = $true
+    )
     
+    $ChildItems = Get-ChildItem -Path $SourceFolder -Recurse:$Recurse -File | sort-object -Property Name
+
+    foreach ($C in $ChildItems) {
+
+        [string]$Fullname = $C.Fullname
+        [string]$DirectoryNAme = $C.DirectoryName
+        [string]$Name = $C.Name
+        [datetime]$CreationTime = $C.CreationTime
+
+        [string]$Prefix = $CreationTime.ToString('yyyyMMdd')
+
+        [string]$TargetFileName = $TargetFolder + '\' +
+                            $Prefix + '_' +
+                            $Name
+
+        $MoveCommand = @"
+move-item -path '$Fullname' -Destination '$TargetFileName'
+"@
+        Write-Debug $MoveCommand
+
+        move-item -path $Fullname -Destination $TargetFileName 
+    }
+
+}
+
+
+
 function Get-CommandDefinition {
     [CmdletBinding()]
     param (
@@ -1602,5 +1660,20 @@ function invoke-PesterReturnFailures {
 set-alias ip invoke-PesterReturnFailures
 set-alias pesterize invoke-PesterReturnFailures
 
+function gvimx
+<#
+    .SYNOPSIS
+    Edits file and returns control to Poswershell command line
+    #> {
+    [CmdletBinding()]
+    param ($FileNames)
+    
+    
+    foreach ($F in $FileNames) {
+        & "C:\Program Files (x86)\vim\vim74\gvim.exe" $F
+        write-verbose "Edited $(dir $F | select fullname, lastwritetime, length | ft -a)"
+    }
+    
+}
 
 export-modulemember -alias * -function *
