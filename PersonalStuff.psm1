@@ -431,122 +431,86 @@ function Get-QuickReferenceFolders
     [CmdletBinding()]
     Param
     (
+        $QuickReferenceFoldersCsvFile = 'c:\matt\local\QuickReferenceFolders.csv'
     )
 
     $QuickReferenceFolders = @()
-    if ($IsLinux)
-    {
-        $Main = "~/website/content/QuickReference"
-    }
-    else
-    {
-        $Main = "c:\matt\website\QuickReference"
-        if (!(test-path $Main))
-        {
-            $Main = "c:\matt\QuickReference"
+
+    foreach ($Q in $(import-csv $QuickReferenceFoldersCsvFile)) {
+
+        [string]$Folder = $Q.Folder
+        if (test-path $Folder ) {
+
+            $QuickReferenceFolders += $Folder
+
         }
 
-    }
-
-    $Staging = "C:\matt\QuickReferenceStaging"
-    $ContextSpecific = "C:\matt\QuickReferenceContextSpecific"
-
-    $QuickReferenceFolders += [PSCustomObject]@{
-        Folder = $Main
-    }
-    $QuickReferenceFolders += [PSCustomObject]@{
-        Folder = $Staging
-    }
-    $QuickReferenceFolders += [PSCustomObject]@{
-        Folder = $ContextSpecific
     }
     
     $QuickReferenceFolders
 }
 
 
-$DefaultQuickReferenceFolders = Get-QuickReferenceFolders
-$DefaultQuickReferenceFoldersCount = $( $DefaultQuickReferenceFolders | measure-object).count
-write-dbg "`$DefaultQuickReferenceFoldersCount: <$DefaultQuickReferenceFoldersCount>"
-    
+
 function get-LineFromQuickReferenceFiles {
-    <#
-    .SYNOPSIS
-    Does a grep on quickref files
-    .DESCRIPTION
-    
-    .PARAMETER $Pattern
-    What to grep for. e.g. databases
-    .INPUTS
-    None. You cannot pipe objects to this function
-    .EXAMPLE
-    qr jobs
+<#
+.SYNOPSIS
+Does a grep on quickref files
+.DESCRIPTION
 
-    Line
-    ----
-    $JOB = dir Sqlserver:\sql\$Computername\default\Jobserver\jobs | where-object {$_.name -like '*big-job*'}
-    dir Sqlserver:\sql\$Computername\default\Jobserver\Jobs | select name, lastrundate, nextrundate, currentrunstatus, lastrunoutcome | ft
-    dir Sqlserver:\sql\$Computername\default\Jobserver\Jobs | ft @{Label ="Jobbie" ; Expression={$_.name} ; Width = 42 }, @{Label="Last run" ;
+.PARAMETER $Pattern
+What to grep for. e.g. databases
+.INPUTS
+None. You cannot pipe objects to this function
+.EXAMPLE
+qr jobs
 
-    #>
+Line
+----
+$JOB = dir Sqlserver:\sql\$Computername\default\Jobserver\jobs | where-object {$_.name -like '*big-job*'}
+
+
+#>
     [CmdletBinding()]
-    Param( $QuickReferenceFolders = $DefaultQuickReferenceFolders,
+    Param( $QuickReferenceFolders = $(Get-QuickReferenceFolders),
         [String] $Pattern,
         [String] $FilePattern)
     
     
-
     if ($Pattern -ne $null) {
-        foreach ($Q in $QuickReferenceFolders) {
 
-            $QuickReferenceFolder = $Q.Folder
+        foreach ($Folder in $QuickReferenceFolders) {
 
-            select-string -Pattern $Pattern -path $QuickReferenceFolder\*$FilePattern*.md
+            write-dbg "About to: <select-string -Pattern $Pattern -path $Folder\*$FilePattern*.md>"
+            select-string -Pattern $Pattern -path $Folder\*$FilePattern*.md
         
         }
         
     }
     else {
 
-        foreach ($Q in $QuickReferenceFolders) {
-
-            $QuickReferenceFolder = $Q.Folder
-            gc $QuickReferenceFolder\*.md
+        foreach ($Folder in $QuickReferenceFolders) {
+            
+            get-content $Folder\*.md
         }
     }
 
 }
 
 
-function show-quickref {
-    <#
-    .SYNOPSIS
-    Does a grep on quickref files
-    .DESCRIPTION
-   
-    .PARAMETER $Pattern
-    What to grep for. e.g. insert
-    .PARAMETER $FilePattern
-    File to grep in. e.g. power
-    .EXAMPLE
-    qr jobs
-
-    Line
-    ----
-    $JOB = dir Sqlserver:\sql\$Computername\default\Jobserver\jobs | where-object {$_.name -like '*big-job*'}
-    dir Sqlserver:\sql\$Computername\default\Jobserver\Jobs | select name, lastrundate, nextrundate, currentrunstatus, lastrunoutcome | ft
-    dir Sqlserver:\sql\$Computername\default\Jobserver\Jobs | ft @{Label ="Jobbie" ; Expression={$_.name} ; Width = 42 }, @{Label="Last run" ;
-
-    #>
+function format-quickref {
+    
     [CmdletBinding()]
 
-    Param([Parameter(Mandatory = $False, Position = 1)] [String] $Pattern,
-        [Parameter(Mandatory = $False, Position = 2)][Alias ("f", "file")] [String] $FilePattern)
+    Param([String] $Pattern,
+          [String] $FilePattern)
 
-    get-LineFromQuickReferenceFiles -pattern $Pattern -filepattern $FilePattern | select line | ft -wrap
+    get-LineFromQuickReferenceFiles -pattern $Pattern -filepattern $FilePattern | 
+        select-object line | 
+        format-table -wrap
 
 }
-set-alias qr show-quickref
+set-alias qr format-quickref
 
 
 
@@ -561,18 +525,39 @@ function edit-quickref
     #> {
     [CmdletBinding()]
 
-    Param( [Parameter(Mandatory = $False, Position = 2)][Alias ("f", "file")] [String] $FilePattern)
+    Param( [Parameter(Mandatory = $False, Position = 2)][Alias ("f", "file")] [String] $FilePattern,
+        [ValidateSet('Staging','ContextSpecific')]$Option = 'Staging')
 
     if ($FilePattern) {
         gvim "$QuickReferenceFolder\\*$FilePattern*.md"
     }
     else {
-        gvim "$QuickReferenceFolder\\unsorted.md"
+        if ($Option -eq 'ContextSpecific') {
+            gvim "C:\matt\QuickReferenceContextSpecific\ContextSpecific.md"
+        } else {
+            gvim "C:\matt\QuickReferenceStaging\Staging.md"
+        }
     }
 }
 set-alias gqr edit-quickref
 set-alias eqr edit-quickref
 set-alias qrg edit-quickref
+
+
+function edit-quickrefContextSpecific
+<#
+    Edit the quick reference document
+#> 
+{
+
+
+    gvim "C:\matt\QuickReferenceContextSpecific\ContextSpecific.md"
+
+}
+
+set-alias qrsh edit-quickrefContextSpecific
+set-alias qrcs edit-quickrefContextSpecific
+
 
 <#
     vim: tabstop=2 softtabstop=2 shiftwidth=2 expandtab
@@ -660,6 +645,148 @@ function get-MTPHistory {
 }
 Set-Alias -Name hh -Value get-MTPHistory
     
+
+function Get-MtpNonStandardVariables {
+<#
+.SYNOPSIS
+    For use in debugging mainly
+#>
+    [CmdletBinding()]
+    param (
+    
+    )
+    
+    $DebugPreference = $PSCmdlet.GetVariableValue('DebugPreference')
+    
+    write-startfunction
+    
+    $StandardVariable = (
+    "Name",
+    "$",
+    "?",
+    "^",
+    "args",
+    "Arguments",
+    "CodeCoverage",
+    "CodeCoverageOutputFile",
+    "CodeCoverageOutputFileFormat",
+    "Configuration",
+    "ConfirmPreference",
+    "ConsoleFileName",
+    "DebugPreference",
+    "EnableExit",
+    "Error",
+    "ErrorActionPreference",
+    "ErrorView",
+    "ExcludeTag",
+    "ExecutionContext",
+    "false",
+    "foreach",
+    "FormatEnumerationLimit",
+    "FUNC",
+    "Functions",
+    "FunctionsFolder",
+    "FunctionToAutoload",
+    "history",
+    "HOME",
+    "HomeMatt",
+    "Host",
+    "InformationPreference",
+    "input",
+    "LASTEXITCODE",
+    "LinuxHome",
+    "MaximumAliasCount",
+    "MaximumDriveCount",
+    "MaximumErrorCount",
+    "MaximumFunctionCount",
+    "MaximumHistoryCount",
+    "MaximumVariableCount",
+    "Modules",
+    "MyInvocation",
+    "NestedPromptLevel",
+    "null",
+    "options",
+    "OTD",
+    "OutputEncoding",
+    
+    "OutputFormat",
+    "Parameters",
+    "Path",
+    "PesterOption",
+    "PID",
+    "PowershellFolder",
+    "profile",
+    "ProgressPreference",
+    "PSBoundParameters",
+    "PSCmdlet",
+    "PSCommandPath",
+    "PSCulture",
+    "PSDebugContext",
+    "PSDefaultParameterValues",
+    "PSEdition",
+    "psEditor",
+    "PSEmailServer",
+    "PSHOME",
+    "PSScriptRoot",
+    "PSSessionApplicationName",
+    "PSSessionConfigurationName",
+    "PSSessionOption",
+    "PSUICulture",
+    "PSVersionTable",
+    "PWD",
+    "Quiet",
+    "Script",
+    "Scripts",
+    "ShellId",
+    "Show",
+    "StackTrace",
+    "StandardVariable",
+    "Strict",
+    "Tag",
+    "TestDrive",
+    "true",
+    "UnGithubbedFunctionsFolder",
+    "VerbosePreference",
+    "WarningPreference",
+    "WhatIfPreference",
+    "WhereAmI",
+    "WinHome",
+    "WinWork")
+    
+
+
+
+    foreach ($V in $(get-variable)) {
+        [string]$Name = $V.Name
+        if ($Name -notin $StandardVariable) {
+            $V
+        }
+    }
+    write-endfunction
+    
+    
+}
+
+set-alias svar Get-MtpNonStandardVariables
+function get-MTPSavePAthHistory {
+    <#
+    .SYNOPSIS
+      Search through history
+    #>
+    [CmdletBinding()]
+    Param ($Pattern = "*",
+        $Tail = 50)
+
+    [string]$HistoryFile = $(Get-PSReadLineOption).HistorySavePAth
+    if ($Pattern -eq "*") {
+        get-content -tail $Tail 
+    }
+    else {
+        Select-string "$Pattern" $HistoryFile | select line
+    }
+
+}
+Set-Alias -Name hhh -Value get-MTPSavePAthHistory
     
     
 
@@ -1535,6 +1662,137 @@ $Function @SplatParams
     $SplatString
 
 }
+
+function Get-GeneratedDescribesForEachFunction {
+<#
+.SYNOPSIS
+    xx
+#>
+    [CmdletBinding()]
+    param (
+        $NameString,
+        $Module    # not coded yet!
+    )
+    
+    $DebugPreference = $PSCmdlet.GetVariableValue('DebugPreference')
+    
+    write-startfunction
+
+    $Functions = get-command $NameString
+
+    $ReturnString = ""
+    foreach ($F in $Functions) {
+    
+        [string]$Name = $F.Name
+
+        $SplatString = get-GeneratedSplatLines $Name
+    
+        $ReturnString = @"
+$ReturnString
+Describe "$Name" {
+
+    $SplatString
+
+    It "xx" {
+
+    }
+
+}
+
+"@
+    }
+    
+    write-endfunction
+    
+    $ReturnString
+    
+}
+
+function get-GeneratedParameterDebugLines {
+    [CmdletBinding()]
+    param (
+        [string]$Function = "get-service"
+    )
+
+    [string]$DebugString = @"
+"@
+
+    $Parameters = get-command $Function | Select-Object -ExpandProperty Parameters
+
+    $CommonParameters = 'Verbose',
+    'Debug',
+    'ErrorAction',
+    'WarningAction',
+    'InformationAction',
+    'ErrorVariable',
+    'WarningVariable',
+    'InformationVariable',
+    'OutVariable',
+    'OutBuffer',
+    'PipelineVariable',
+    'WhatIf',
+    'Confirm'
+    
+    $EscapeCharacter = '`'
+    ForEach ($P in $Parameters.Keys) {
+        [string]$Key = $P
+
+        if ($CommonParameters -notcontains $Key) {
+
+            $DebugString = @"
+$DebugString
+write-dbg "$EscapeCharacter`$$Key : <`$$Key>"
+"@
+
+        }
+
+    }
+
+    $DebugString = @"
+$DebugString
+}
+
+$Function @SplatParams
+"@
+
+    $DebugString
+
+}
+
+
+
+function Get-GeneratedPesterPropertyChecks {
+    [CmdletBinding()]
+    param (
+        [string[]]$ObjectName,
+        # $Object,
+        $Property
+    )
+    
+    $DebugPreference = $PSCmdlet.GetVariableValue('DebugPreference')
+    
+    write-startfunction
+    
+    $ListOfProperties = $Property
+
+    $Result = ""
+    foreach ($property in $ListOfProperties) {
+
+        $Result = @"
+$Result
+[String]`$$Property = `$$ObjectName.$Property
+`$$Property | Should Be 'xx'
+
+"@
+        
+
+    }
+
+    write-endfunction
+    
+    $Result
+    
+}
     
 function invoke-PesterReturnFailures {
     [CmdletBinding()]
@@ -1602,5 +1860,73 @@ function invoke-PesterReturnFailures {
 set-alias ip invoke-PesterReturnFailures
 set-alias pesterize invoke-PesterReturnFailures
 
+function Get-GeneratedPSCustomObjectFromObject {
+    [CmdletBinding()]
+    param (
+        $InputObject,
+        $RightHandSidePrefix
+    )
+    
+    $DebugPreference = $PSCmdlet.GetVariableValue('DebugPreference')
+    
+    write-startfunction
+    
+    $Members = $InputObject | Get-Member | ? MemberType -like "*Property"
+
+    $Text = @"
+[PSCustomObject]@{
+"@
+    
+    foreach ($M in $Members) {
+        [string]$Name = $M.Name
+
+        $Text = @"
+$Text
+    $Name = `$$RightHandSidePrefix.$Name
+"@
+    }
+    
+    $Text = @"
+$Text
+}
+"@
+
+
+    write-endfunction
+    
+    return $Text
+}
+
+
+
+function Format-CommandDefinition {
+    [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High')]
+    param(
+        [Parameter(Position = 0, Mandatory)]
+        [ArgumentCompleter(
+            {
+                param($Command, $Parameter, $WordToComplete, $CommandAst, $FakeBoundParams)
+
+                $(Get-Command "$WordToComplete*").Name
+            }
+        )]
+        [ValidateScript(
+            {
+                If ($_ -in ($(Get-Command).Name)) {
+                    $True
+                } else {
+                    Throw "Don't be silly"
+                }
+            }
+        )]
+        [string]
+        $Name
+    )
+
+    get-command $Name |
+            select definition |
+            format-list
+}
+set-alias showme Format-CommandDefinition
 
 export-modulemember -alias * -function *
