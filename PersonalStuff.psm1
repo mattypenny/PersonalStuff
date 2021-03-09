@@ -47,7 +47,65 @@ function promptx {
 
 }
 #>
+
+<#
+.Synopsis
+Move files to another folder with date on the front
+.DESCRIPTION
+Long description
+.EXAMPLE
+Move-ChildItemsAndDatePrefix -SourceFolder C:\Users\matty\OneDrive\music\tosort\GroverPro -TargetFolder C:\Users\matty\OneDrive\music\aardvark_old_podcasts 
+#>
+function Move-ChildItemsAndDatePrefix {
+
+    [CmdletBinding()]
+    param (
+        [ValidateScript({
+            if( -Not ($_ | Test-Path) ){
+                throw "Source folder does not exist"
+            }
+            return $true
+        })]
+        [System.IO.FileInfo]$SourceFolder,
+        
+        [ValidateScript({
+            if( -Not ($_ | Test-Path) ){
+                throw "Target folder does not exist"
+            }
+            return $true
+        })]
+        [String]$TargetFolder,
+
+        [switch]$Recurse = $true
+    )
     
+    $ChildItems = Get-ChildItem -Path $SourceFolder -Recurse:$Recurse -File | sort-object -Property Name
+
+    foreach ($C in $ChildItems) {
+
+        [string]$Fullname = $C.Fullname
+        [string]$DirectoryNAme = $C.DirectoryName
+        [string]$Name = $C.Name
+        [datetime]$CreationTime = $C.CreationTime
+
+        [string]$Prefix = $CreationTime.ToString('yyyyMMdd')
+
+        [string]$TargetFileName = $TargetFolder + '\' +
+                            $Prefix + '_' +
+                            $Name
+
+        $MoveCommand = @"
+move-item -path '$Fullname' -Destination '$TargetFileName'
+"@
+        Write-Debug $MoveCommand
+
+        move-item -path $Fullname -Destination $TargetFileName 
+    }
+
+}
+
+
+
 function Get-CommandDefinition {
     [CmdletBinding()]
     param (
@@ -74,7 +132,9 @@ $Definition
     return $Result
 
 }
-set-alias gcmd Get-CommandDefinition
+set-alias gcmdef Get-CommandDefinition
+set-alias showme Get-CommandDefinition
+
 
 function Write-CommentBasedHelpToMarkdownFile {
     <#
@@ -1928,5 +1988,71 @@ function Format-CommandDefinition {
             format-list
 }
 set-alias showme Format-CommandDefinition
+function gvimx
+<#
+    .SYNOPSIS
+    Edits file and returns control to Poswershell command line
+    #> {
+    [CmdletBinding()]
+    param ($FileNames)
+    
+    
+    foreach ($F in $FileNames) {
+        & "C:\Program Files (x86)\vim\vim74\gvim.exe" $F
+        write-verbose "Edited $(dir $F | select fullname, lastwritetime, length | ft -a)"
+    }
+    
+}
+
+<#
+.Synopsis
+   Get-CommandExcludingSomeModules
+.EXAMPLE
+   Get-CommandExcludingSomeModules vi
+.EXAMPLE
+   gcmx vi
+#>
+function Get-CommandExcludingSomeModules
+{
+    [CmdletBinding()]
+    
+    Param
+    (
+        # Param1 help description
+        [Parameter(Mandatory=$true,
+                   ValueFromPipelineByPropertyName=$true,
+                   Position=0)]
+        $Name
+
+    )
+    $Modules = Get-Module |
+        where Name -NotMatch "^Az" |
+        where Name -NotMatch "ISE"
+
+
+    get-command -Module $Modules -Name "*$Name*"
+}
+set-alias gcmx Get-CommandExcludingSomeModules
+
+
+function get-CommandFromSpecifiedModules {
+    [CmdletBinding()]
+    
+    Param
+    (
+        # Param1 help description
+        [Parameter(Mandatory=$true,
+                   ValueFromPipelineByPropertyName=$true,
+                   Position=0)]
+        $Name,
+        [string[]]$Module = ('dbatools')
+    )
+
+    get-command -module $Module -name "*$Name*"
+
+}
+
+Set-Alias gcmd get-CommandFromSpecifiedModules
+Set-Alias gcmdba get-CommandFromSpecifiedModules
 
 export-modulemember -alias * -function *
